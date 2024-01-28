@@ -16,7 +16,7 @@ import java.io.Serializable;
 @NoArgsConstructor
 @Inheritance(strategy = InheritanceType.TABLE_PER_CLASS)
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class BaseEntity<ID extends Serializable> {
+public  class BaseEntity<ID extends Serializable> {
       @Id @GeneratedValue(strategy = GenerationType.AUTO)
       ID id;
 
