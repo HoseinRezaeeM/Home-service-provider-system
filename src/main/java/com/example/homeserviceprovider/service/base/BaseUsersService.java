@@ -2,6 +2,7 @@ package com.example.homeserviceprovider.service.base;
 
 import com.example.homeserviceprovider.base.service.BaseEntityService;
 import com.example.homeserviceprovider.domain.user.Users;
+import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
