@@ -10,7 +10,7 @@ import java.io.Serializable;
 import java.util.List;
 import java.util.Optional;
 
-@Repository
+
 public interface BaseEntityRepository<T extends BaseEntity<ID>,ID extends Serializable> extends JpaRepository<T,ID> {
       @Override
       List<T> findAll();
