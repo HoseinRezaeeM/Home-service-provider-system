@@ -2,6 +2,8 @@ package com.example.homeserviceprovider.domain.order;
 
 
 import com.example.homeserviceprovider.base.domain.BaseEntity;
+import com.example.homeserviceprovider.domain.address.Address;
+import com.example.homeserviceprovider.domain.comment.Comment;
 import com.example.homeserviceprovider.domain.offer.Offer;
 import com.example.homeserviceprovider.domain.order.enums.OrderStatus;
 import com.example.homeserviceprovider.domain.service.SubServices;
@@ -38,15 +40,19 @@ public class Order extends BaseEntity<Long> {
       OrderStatus orderStatus;
       @ManyToOne(cascade = CascadeType.MERGE)
       Customer customer;
-      @ManyToOne(cascade = CascadeType.ALL)
+      @ManyToOne(cascade = CascadeType.MERGE)
       SubServices subServices;
       @OneToMany(mappedBy = "order",fetch = FetchType.EAGER)
       List<Offer> offerList;
+      @OneToOne
+      Comment comment;
+      @OneToOne
+      Address address;
 
 
 
       public Order(LocalDateTime executionTime, LocalDateTime endTime, Long proposedPrice,
-                   String description, Customer customer, SubServices subServices) {
+                   String description, Customer customer, SubServices subServices,Address address) {
             this.executionTime = executionTime;
             this.endTime = endTime;
             this.proposedPrice = proposedPrice;
@@ -54,6 +60,18 @@ public class Order extends BaseEntity<Long> {
             this.orderStatus = WAITING_FOR_SPECIALIST_SUGGESTION;
             this.customer = customer;
             this.subServices = subServices;
+            this.address=address;
+      }
+
+      public Order(LocalDateTime executionTime, LocalDateTime endTime,
+                   Long proposedPrice, String description, SubServices subServices, Address address) {
+            this.executionTime = executionTime;
+            this.endTime = endTime;
+            this.proposedPrice = proposedPrice;
+            this.description = description;
+            this.subServices = subServices;
+            this.address = address;
+            this.orderStatus = WAITING_FOR_SPECIALIST_SUGGESTION;
       }
 
       public Order(long id) {
