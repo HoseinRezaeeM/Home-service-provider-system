@@ -30,14 +30,16 @@ public class Specialist extends Users {
       List<SubServices> subServicesList ;
       @OneToMany(mappedBy = "specialist")
       List<Offer> offerList ;
+      String province;
 
-      public Specialist(String firstname, String lastname, String email, String password,
+      public Specialist(String firstname, String lastname, String email, String password,String province,
                      byte[] image) {
             super(firstname, lastname, email, password, Role.SPECIALIST);
             this.score = 0;
             this.status = SpecialistStatus.NEW;
             this.image = image;
             this.credit =0L;
+            this.province=province;
       }
 
       public Specialist(long id) {
