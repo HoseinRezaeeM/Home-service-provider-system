@@ -39,6 +39,19 @@ public class SubServices extends BaseEntity<Long> {
             this.mainServices = mainServices;
       }
 
+      public SubServices(Long id,String name, Long basePrice, String description) {
+            super(id);
+            this.name = name;
+            this.basePrice = basePrice;
+            this.description = description;
+      }
+
+      public SubServices(String name, Long basePrice, String description) {
+            this.name = name;
+            this.basePrice = basePrice;
+            this.description = description;
+      }
+
       public SubServices(Long id) {
             super(id);
       }
