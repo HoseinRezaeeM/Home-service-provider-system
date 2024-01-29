@@ -3,11 +3,10 @@ package com.example.homeserviceprovider.domain.user;
 
 import com.example.homeserviceprovider.domain.address.Address;
 import com.example.homeserviceprovider.domain.order.Order;
+import com.example.homeserviceprovider.domain.user.enums.CustomerStatus;
 import com.example.homeserviceprovider.domain.user.enums.Role;
 
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Entity;
-import jakarta.persistence.OneToMany;
+import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -26,9 +25,11 @@ public class Customer extends Users {
       @OneToMany(mappedBy = "customer",cascade = CascadeType.ALL)
       @ToString.Exclude
       List<Address> addressList ;
-      @OneToMany(mappedBy = "customer",cascade = CascadeType.ALL)
+      @OneToMany(mappedBy = "customer",cascade = CascadeType.ALL,fetch = FetchType.EAGER)
       @ToString.Exclude
       List<Order> orderList ;
+      @Enumerated(value = EnumType.STRING)
+      CustomerStatus customerStatus;
 
       public Customer(String firstname, String lastname, String email,
                       String password, Role role, List<Address> addressList, List<Order> orderList) {
@@ -41,6 +42,7 @@ public class Customer extends Users {
       public Customer(String firstname, String lastname, String email, String password) {
             super(firstname, lastname, email, password, Role.CUSTOMER);
             this.credit = 0L;
+            this.customerStatus=CustomerStatus.NEW;
       }
 
       public Customer(long id) {
