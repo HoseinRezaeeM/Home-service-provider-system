@@ -34,29 +34,29 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 public class AdminServiceImplTest {
 
       @Autowired
-      private AdminService ADMIN_SERVICE;
+      private AdminService adminService;
       @Autowired
-      private MainServiceService MAIN_SERVICE_SERVICE;
+      private MainServiceService mainServiceService;
       @Autowired
-      private SubServicesService SUBSERVICE_SERVICE;
+      private SubServicesService subServicesService;
       @Autowired
-      private SpecialistService SPECIALIST_SERVICE;
+      private SpecialistService specialistService;
 
       @Test
       @Order(1)
       void createNewMainServiceWithExceptionForInvalidInput() {
             MainServices mainServices = new MainServices("facilities12 Building");
             assertThrows(AlphabetException.class, () -> {
-                  ADMIN_SERVICE.createMainService(mainServices);
+                  adminService.createMainService(mainServices);
             });
       }
 
       @Test
       @Order(2)
       void createNewMainService() {
-            ADMIN_SERVICE.createMainService(new MainServices("facilities Building"));
+            adminService.createMainService(new MainServices("facilities Building"));
             Optional<MainServices> optionalMainService =
-                   MAIN_SERVICE_SERVICE.findByName("facilities Building");
+                   mainServiceService.findByName("facilities Building");
             assertEquals("facilities Building", optionalMainService.get().getName());
       }
 
@@ -64,7 +64,7 @@ public class AdminServiceImplTest {
       @Order(3)
       void createDuplicateMainService() {
             assertThrows(MainServicesIsExistException.class, () -> {
-                  ADMIN_SERVICE.createMainService(new MainServices("facilities Building"));
+                  adminService.createMainService(new MainServices("facilities Building"));
             });
       }
 
@@ -73,9 +73,9 @@ public class AdminServiceImplTest {
       @Test
       @Order(4)
       void addSubServices() {
-            ADMIN_SERVICE.addSubServices(
+            adminService.addSubServices(
                    new SubServices("pipeing", 1000L, "hard work", new MainServices("facilities Building")));
-            Optional<SubServices> room = SUBSERVICE_SERVICE.findByName("pipeing");
+            Optional<SubServices> room = subServicesService.findByName("pipeing");
             assertEquals(1000L, room.get().getBasePrice());
       }
 
@@ -83,7 +83,7 @@ public class AdminServiceImplTest {
       @Order(5)
       void addDuplicateSubServices() {
             assertThrows(SubServicesIsExistException.class, () -> {
-                  ADMIN_SERVICE
+                  adminService
                          .addSubServices(new SubServices("pipeing", 1000L,
                                 "hard work", new MainServices("facilities Building")));
             });
@@ -96,7 +96,7 @@ public class AdminServiceImplTest {
             byte[] imageBayte = convertFileToBytes(file);
             Specialist specialist =new Specialist("milad", "ahmadian",
                    "milad.ah@yahoo.com", "45#Po@iu","Tehran",imageBayte);
-            SPECIALIST_SERVICE.addNewSpecialist(specialist,pathImage);
+            specialistService.addNewSpecialist(specialist,pathImage);
       }
 
 
@@ -104,9 +104,9 @@ public class AdminServiceImplTest {
       @Test
       @Order(7)
       void changeSpecialistStatus() throws Exception {
-            Specialist specialist = SPECIALIST_SERVICE.findByUsername("milad.ah@yahoo.com").get();
-            ADMIN_SERVICE.confirmSpecialist(specialist.getId());
-            assertEquals(SPECIALIST_SERVICE.findByUsername("milad.ah@yahoo.com").
+            Specialist specialist = specialistService.findByUsername("milad.ah@yahoo.com").get();
+            adminService.confirmSpecialist(specialist.getId());
+            assertEquals(specialistService.findByUsername("milad.ah@yahoo.com").
                    get().getStatus(), SpecialistStatus.CONFIRMED);
       }
 
@@ -114,11 +114,11 @@ public class AdminServiceImplTest {
       @Order(8)
       void addSpecialistToSubServices() {
             Optional<Specialist> specialist =
-                   SPECIALIST_SERVICE.findByUsername("milad.ah@yahoo.com");
-            Optional<SubServices> serviceByName = SUBSERVICE_SERVICE.findByName("pipeing");
-            ADMIN_SERVICE.addSpecialistToSubServices(serviceByName.get().getId(), specialist.get().getId());
+                   specialistService.findByUsername("milad.ah@yahoo.com");
+            Optional<SubServices> serviceByName = subServicesService.findByName("pipeing");
+            adminService.addSpecialistToSubServices(serviceByName.get().getId(), specialist.get().getId());
 
-            SubServices subServices = SUBSERVICE_SERVICE.findByName("pipeing").get();
+            SubServices subServices = subServicesService.findByName("pipeing").get();
             specialist.get().getSubServicesList().forEach(sub -> {
                   if (Objects.equals(sub.getId(), subServices.getId()))
                         assertEquals(sub.getId(), subServices.getId());
@@ -130,7 +130,7 @@ public class AdminServiceImplTest {
 
       @Order(9)
       void findAllMainServices() {
-            List<MainServices> allMainService = ADMIN_SERVICE.findAllMainService();
+            List<MainServices> allMainService = adminService.findAllMainService();
             int count = (int) allMainService.stream().
                    filter(Objects::nonNull).count();
             assertEquals(1, count);
@@ -140,7 +140,7 @@ public class AdminServiceImplTest {
       @Test
       @Order(10)
       void findAllSubService() {
-            List<SubServices> allSubService = ADMIN_SERVICE.findAllSubServices();
+            List<SubServices> allSubService = adminService.findAllSubServices();
             int count = (int) allSubService.stream().
                    filter(Objects::nonNull).count();
             assertEquals(1, count);
@@ -149,9 +149,9 @@ public class AdminServiceImplTest {
       @Test
       @Order(11)
       void editSubServicesCustom() {
-            SubServices subServices = SUBSERVICE_SERVICE.findByName("pipeing").get();
-            ADMIN_SERVICE.editSubServicesCustom(new SubServices(subServices.getId(),"wall", 125000L, "wood"));
-            SubServices newSubServices = SUBSERVICE_SERVICE.findByName("wall").get();
+            SubServices subServices = subServicesService.findByName("pipeing").get();
+            adminService.editSubServicesCustom(new SubServices(subServices.getId(),"wall", 125000L, "wood"));
+            SubServices newSubServices = subServicesService.findByName("wall").get();
             assertEquals(subServices.getId(), newSubServices.getId());
       }
 
