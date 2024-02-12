@@ -1,16 +1,12 @@
 package com.example.homeserviceprovider.service;
 
-import com.example.homeserviceprovider.domain.address.Address;
-import com.example.homeserviceprovider.domain.comment.Comment;
-import com.example.homeserviceprovider.domain.offer.Offer;
-import com.example.homeserviceprovider.domain.order.Order;
-import com.example.homeserviceprovider.domain.service.MainServices;
-import com.example.homeserviceprovider.domain.service.SubServices;
 import com.example.homeserviceprovider.domain.user.Customer;
 import com.example.homeserviceprovider.domain.user.Users;
+import com.example.homeserviceprovider.dto.request.*;
+import com.example.homeserviceprovider.dto.response.*;
 import com.example.homeserviceprovider.service.base.BaseUsersService;
-
-
+import org.springframework.ui.Model;
+import org.springframework.web.servlet.ModelAndView;
 
 
 import java.util.List;
@@ -33,42 +29,47 @@ public interface CustomerService extends BaseUsersService<Customer> {
       @Override
       Optional<Customer> findByUsername(String email);
 
-      List<Offer> findOfferListByOrderIdBasedOnProposedPrice(Long orderId, Users users);
+      List<OfferResponseDTO> findOfferListByOrderIdBasedOnProposedPrice(Long orderId,Users users);
 
-      List<Offer> findOfferListByOrderIdBasedOnSpecialistScore(Long orderId, Users users);
+      List<OfferResponseDTO> findOfferListByOrderIdBasedOnSpecialistScore(Long orderId, Users users);
 
+      List<FilterUserResponseDTO> customerFilter(FilterUserDTO customerDTO);
 
-      void addNewCustomer(Customer customer);
+      String addNewCustomer(CustomerRegistrationDTO clientRegistrationDTO);
 
-      void editPassword(String newPassword, String confirmNewPassword, Long customerId);
+      ProjectResponse editPassword(ChangePasswordDTO changePasswordDTO, Long customerId);
 
-      List<MainServices> showAllMainServices();
+      List<MainServiceResponseDTO> showAllMainServices();
 
-      List<SubServices> showSubServices(String mainServiceName);
+      List<SubServicesResponseDTO> showSubServices(String mainServiceName);
 
-      void addNewOrder(Order order, Long customerId);
+      ProjectResponse addNewOrder(SubmitOrderDTO submitOrderDTO, Long customerId);
 
-      void chooseSpecialistForOrder(Long offerId, Users users);
+      ProjectResponse chooseSpecialistForOrder(Long offerId,Users users);
 
-      void changeOrderStatusToStarted(Long orderId, Users users);
+      ProjectResponse changeOrderStatusToStarted(Long orderId, Users users);
 
-      void changeOrderStatusToDone(Long orderId, Users users);
+      ProjectResponse changeOrderStatusToDone(Long orderId,Users users);
 
-      void registerComment(Comment comment, Users users);
+      ProjectResponse registerComment(CommentRequestDTO commentRequestDTO, Users users);
 
+      List<FilterOrderResponseDTO> showAllOrders(Long customerId);
 
-      List<Order> showAllOrder(Long customerId);
+      ProjectResponse changeOrderStatusToPaidByOnlinePayment(CustomerIdOrderIdDTO customerIdOrderIdDTO);
 
+      ProjectResponse increaseCustomerCredit(CustomerIdPriceDTO customerIdPriceDTO);
 
-      void increaseCustomerCredit(Customer customer, Long price);
+      ProjectResponse paidByInAppCredit(Long orderId, Users customer);
 
-      void paidByInAppCredit(Long orderId, Users customer);
+      ModelAndView payByOnlinePayment(Long orderId, Users users, Model model);
 
+      ModelAndView increaseAccountBalance(Long price, Long customerId, Model model);
 
-
-      void addAddress(Address address, Long customerId);
+      ProjectResponse addAddress(AddressDTO addressDTO, Long customerId);
 
       Long getCustomerCredit(Long customerId);
+
+      List<FilterOrderResponseDTO> filterOrder(String orderStatus, Long customerid);
 
 
 }
