@@ -45,7 +45,5 @@ public class Customer extends Users {
             this.customerStatus=CustomerStatus.NEW;
       }
 
-      public Customer(long id) {
-            super(id);
-      }
+
 }
