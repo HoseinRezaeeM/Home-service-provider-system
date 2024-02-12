@@ -1,12 +1,11 @@
 package com.example.homeserviceprovider.service;
 
-import com.example.homeserviceprovider.domain.offer.Offer;
-import com.example.homeserviceprovider.domain.order.Order;
-import com.example.homeserviceprovider.domain.service.MainServices;
-import com.example.homeserviceprovider.domain.service.SubServices;
+
 import com.example.homeserviceprovider.domain.user.Specialist;
+import com.example.homeserviceprovider.dto.request.*;
+import com.example.homeserviceprovider.dto.response.*;
 import com.example.homeserviceprovider.service.base.BaseUsersService;
-import org.springframework.stereotype.Service;
+
 
 
 import java.io.IOException;
@@ -15,41 +14,46 @@ import java.util.Optional;
 
 
 public interface SpecialistService extends BaseUsersService<Specialist> {
-    @Override
-    void save(Specialist worker);
+      @Override
+      void save(Specialist specialist);
 
-    @Override
-    void delete(Specialist worker);
+      @Override
+      void delete(Specialist specialist);
 
-    @Override
-    Optional<Specialist> findById(Long aLong);
+      @Override
+      Optional<Specialist> findById(Long aLong);
 
-    @Override
-    List<Specialist> findAll();
+      @Override
+      List<Specialist> findAll();
 
-    @Override
-    Optional<Specialist> findByUsername(String email);
+      @Override
+      Optional<Specialist> findByUsername(String email);
 
-    void editPassword(String newPassword, String confirmNewPassword,Long specialistId);
+      ProjectResponse editPassword(ChangePasswordDTO changePasswordDTO, Long specialistId);
 
-    void addNewSpecialist(Specialist specialist,String filePath) throws IOException;
+      List<FilterUserResponseDTO> specialistFilter(FilterUserDTO specialistDTO);
 
-    List<MainServices> showAllMainServices();
+      String addNewSpecialist(SpecialistRegistrationDTO specialistRegistrationDTO) throws IOException;
 
-    List<SubServices> showSubServices(MainServices mainServices);
+      List<MainServiceResponseDTO> showAllMainServices();
 
-    List<Order> showRelatedOrders(Long specialistId);
-
-    void submitAnOffer(Offer offer,Long specialistId);
+      List<SubServicesResponseDTO> showSubServices(ChooseMainServiceDTO dto);
 
 
-    List<Offer> showAllOffersWaiting(Long specialistId);
+      List<LimitedOrderResponseDTO> showRelatedOrders(Long specialistId);
 
-    List<Offer> showAllOffersAccepted(Long specialistId);
+      ProjectResponse submitAnOffer(OfferRequestDTO offerRequestDTO, Long specialistId);
 
-    List<Offer> showAllOffersRejected(Long specialistId);
+      double getSpecialistRate(Long specialistId);
 
-    Long getSpecialistCredit(Long specialistId);
+      List<OfferResponseDTO> showAllOffersWaiting(Long specialistId);
 
+      List<OfferResponseDTO> showAllOffersAccepted(Long specialistId);
+
+      List<OfferResponseDTO> showAllOffersRejected(Long specialistId);
+
+      Long getSpecialistCredit(Long specialistId);
+
+      List<FilterUserResponseDTO> allSpecialist(FilterUserDTO userDTO);
 
 }
