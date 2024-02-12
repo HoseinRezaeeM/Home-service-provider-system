@@ -1,37 +1,53 @@
 package com.example.homeserviceprovider.service.Impl;
 
 
+import cn.apiclub.captcha.Captcha;
 import com.example.homeserviceprovider.base.service.impl.BaseEntityServiceImpl;
 import com.example.homeserviceprovider.domain.address.Address;
 import com.example.homeserviceprovider.domain.comment.Comment;
 import com.example.homeserviceprovider.domain.offer.Offer;
 import com.example.homeserviceprovider.domain.order.Order;
 import com.example.homeserviceprovider.domain.order.enums.OrderStatus;
-import com.example.homeserviceprovider.domain.service.MainServices;
 import com.example.homeserviceprovider.domain.service.SubServices;
+import com.example.homeserviceprovider.domain.user.Admin;
 import com.example.homeserviceprovider.domain.user.Customer;
 import com.example.homeserviceprovider.domain.user.Specialist;
 import com.example.homeserviceprovider.domain.user.Users;
-import com.example.homeserviceprovider.domain.user.enums.CustomerStatus;
+import com.example.homeserviceprovider.dto.request.*;
+import com.example.homeserviceprovider.dto.response.*;
 import com.example.homeserviceprovider.exception.*;
+import com.example.homeserviceprovider.mapper.*;
 import com.example.homeserviceprovider.repository.CustomerRepository;
+import com.example.homeserviceprovider.security.token.entity.Token;
+import com.example.homeserviceprovider.security.token.service.TokenService;
 import com.example.homeserviceprovider.service.*;
+import com.example.homeserviceprovider.util.CaptchaUtil;
 import com.example.homeserviceprovider.util.Validation;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.ui.Model;
+import org.springframework.web.servlet.ModelAndView;
 
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static com.example.homeserviceprovider.domain.offer.enums.OfferStatus.ACCEPTED;
 import static com.example.homeserviceprovider.domain.offer.enums.OfferStatus.REJECTED;
 import static com.example.homeserviceprovider.domain.order.enums.OrderStatus.*;
-import static com.example.homeserviceprovider.domain.user.enums.CustomerStatus.HAS_NOT_ORDER_YET;
-
+import static com.example.homeserviceprovider.domain.user.enums.CustomerStatus.*;
 
 
 @Service
@@ -46,21 +62,46 @@ public class CustomerServiceImpl extends BaseEntityServiceImpl<Customer, Long, C
       private final OrderService orderService;
       private final OfferService offerService;
       private final CommentService commentService;
+      private final SpecialistService specialistService;
+      private final TokenService tokenService;
+      private final EmailService emailService;
 
-
+      private final CustomerMapper customerMapper;
+      private final MainServiceMapper mainServiceMapper;
+      private final CommentMapper commentMapper;
+      private final OrderMapper orderMapper;
+      private final OfferMapper offerMapper;
+      private final AddressMapper addressMapper;
 
       private final Validation validation;
+      private final PasswordEncoder passwordEncoder;
 
-      public CustomerServiceImpl(CustomerRepository repository, MainServiceService mainServiceService, SubServicesService subServicesService,
-                                 OrderService orderService, OfferService offerService,
-                                 CommentService commentService, Validation validation) {
+      @PersistenceContext
+      private final EntityManager entityManager;
+
+      public CustomerServiceImpl(CustomerRepository repository, MainServiceService mainServiceService, SubServicesService subServicesService, OrderService orderService,
+                                 OfferService offerService, CommentService commentService, SpecialistService specialistService, TokenService tokenService,
+                                 EmailService emailService, CustomerMapper customerMapper, MainServiceMapper mainServiceMapper, CommentMapper commentMapper,
+                                 OrderMapper orderMapper, OfferMapper offerMapper, AddressMapper addressMapper, Validation validation, PasswordEncoder passwordEncoder
+             , EntityManager entityManager) {
             super(repository);
             this.mainServiceService = mainServiceService;
             this.subServicesService = subServicesService;
             this.orderService = orderService;
             this.offerService = offerService;
             this.commentService = commentService;
+            this.specialistService = specialistService;
+            this.tokenService = tokenService;
+            this.emailService = emailService;
+            this.customerMapper = customerMapper;
+            this.mainServiceMapper = mainServiceMapper;
+            this.commentMapper = commentMapper;
+            this.orderMapper = orderMapper;
+            this.offerMapper = offerMapper;
+            this.addressMapper = addressMapper;
             this.validation = validation;
+            this.passwordEncoder = passwordEncoder;
+            this.entityManager = entityManager;
       }
 
       @Override
@@ -70,39 +111,46 @@ public class CustomerServiceImpl extends BaseEntityServiceImpl<Customer, Long, C
 
 
       @Override
-      public void addNewCustomer(Customer customer) {
-            validation.checkEmail(customer.getEmail());
-            if (repository.findByEmail(customer.getEmail()).isPresent())
+      public String addNewCustomer(CustomerRegistrationDTO dto) {
+            validation.checkEmail(dto.getEmail());
+            if (repository.findByEmail(dto.getEmail()).isPresent())
                   throw new DuplicateEmailException("this Email already exist!");
-            validation.checkPassword(customer.getPassword());
-            validation.checkText(customer.getFirstname());
-            validation.checkText(customer.getLastname());
-
-            repository.save(customer);
-
+            validation.checkPassword(dto.getPassword());
+            validation.checkText(dto.getFirstname());
+            validation.checkText(dto.getLastname());
+            Customer client = customerMapper.convertToNewClient(dto);
+            repository.save(client);
+            String newToken = UUID.randomUUID().toString();
+            Token token = new Token(LocalDateTime.now(), LocalDateTime.now().plusMinutes(15), client);
+            token.setToken(newToken);
+            tokenService.saveToken(token);
+            SimpleMailMessage mailMessage =
+                   emailService.createEmail(client.getEmail(), client.getFirstname(), token.getToken(), client.getRole());
+            emailService.sendEmail(mailMessage);
+            return newToken;
       }
 
       @Override
-      public void editPassword(String newPassword, String confirmNewPassword, Long clientId) {
-            validation.checkPassword(newPassword);
-            if (!newPassword.equals(confirmNewPassword))
+      public ProjectResponse editPassword(ChangePasswordDTO changePasswordDTO, Long clientId) {
+            validation.checkPassword(changePasswordDTO.getNewPassword());
+            if (!changePasswordDTO.getNewPassword().equals(changePasswordDTO.getConfirmNewPassword()))
                   throw new DuplicatePasswordException("this confirmNewPassword not match with newPassword!");
-            Optional<Customer> customer = repository.findById(clientId);
-            customer.get().setPassword(confirmNewPassword);
-
+            Optional<Customer> client = repository.findById(clientId);
+            client.get().setPassword(passwordEncoder.encode(changePasswordDTO.getConfirmNewPassword()));
+            return new ProjectResponse("200", "CHANGE PASSWORD SUCCESSFULLY");
       }
 
       @Override
       @Transactional(readOnly = true)
-      public List<MainServices> showAllMainServices() {
-            List<MainServices> mainServices = new ArrayList<>();
-            mainServices = mainServiceService.findAll();
-            return mainServices.stream().toList();
+      public List<MainServiceResponseDTO> showAllMainServices() {
+            List<MainServiceResponseDTO> msrDTOS = new ArrayList<>();
+            mainServiceService.findAll().forEach(ms -> msrDTOS.add(mainServiceMapper.convertToDTO(ms)));
+            return msrDTOS;
       }
 
       @Override
       @Transactional(readOnly = true)
-      public List<SubServices> showSubServices(String mainServiceName) {
+      public List<SubServicesResponseDTO> showSubServices(String mainServiceName) {
             validation.checkBlank(mainServiceName);
             if (mainServiceService.findByName(mainServiceName).isEmpty())
                   throw new MainServicesIsNotExistException("this main service dose not exist!");
@@ -110,86 +158,174 @@ public class CustomerServiceImpl extends BaseEntityServiceImpl<Customer, Long, C
       }
 
       @Override
-      public void addNewOrder(Order order, Long customerId) {
-           Customer customer = repository.findById(customerId).get();
-            if (customer.getCustomerStatus().equals(CustomerStatus.NEW))
+      public ProjectResponse addNewOrder(SubmitOrderDTO soDTO, Long clientId) {
+            Customer dbClient = repository.findById(clientId).get();
+            if (dbClient.getCustomerStatus().equals(NEW))
                   throw new CustomerStatusException("you can't sumbit order," +
-                                                    "because your account is NEW," +
-                                                    " please added Address and update your account.");
-            validation.checkBlank(order.getAddress().getProvince());
-            if ((customer.getAddressList().stream().filter(a ->
-                   a.getProvince().equals(order.getAddress().getProvince()))).findFirst().isEmpty())
+                                                  "because your account is NEW," +
+                                                  " please added Address and update your account.");
+            validation.checkBlank(soDTO.getAddressTitle());
+            if ((dbClient.getAddressList().stream().filter(a ->
+                   a.getProvince().equals(soDTO.getAddressTitle()))).findFirst().isEmpty())
                   throw new AddressFormatException("you did not added such an address!");
-            if (order.getEndTime().isBefore(LocalDateTime.now()))
+            if (soDTO.getWorkStartDate().isBefore(LocalDateTime.now()))
                   throw new TimeException("passed this date!");
-            if (order.getEndTime().isBefore(order.getExecutionTime()))
+            if (soDTO.getWorkEndDate().isBefore(soDTO.getWorkStartDate()))
                   throw new TimeException("Time does not go back!");
-            validation.checkBlank(order.getSubServices().getName());
-            validation.checkPositiveNumber(order.getProposedPrice());
-            validation.checkBlank(order.getDescription());
-            Optional<SubServices> subServices = subServicesService.findByName(order.getSubServices().getName());
+            validation.checkBlank(soDTO.getJobName());
+            validation.checkPositiveNumber(soDTO.getProposedPrice());
+            validation.checkBlank(soDTO.getDescription());
+            Optional<SubServices> subServices = subServicesService.findByName(soDTO.getJobName());
             if (subServices.isEmpty())
                   throw new SubServicesIsNotExistException("this subServices does not exist!");
-            if (subServices.get().getBasePrice() > order.getProposedPrice())
+            if (subServices.get().getBasePrice() > soDTO.getProposedPrice())
                   throw new AmountLessExseption("this proposed price is less than base price of the subServices!");
+            Order order = orderMapper.convertToNewOrder(soDTO, dbClient, subServices.get());
+            if (dbClient.getCustomerStatus().equals(HAS_NOT_ORDER_YET))
+                  dbClient.setCustomerStatus(HAS_ORDERS);
             orderService.save(order);
-
+            return new ProjectResponse("200", "THE ORDER HAS BEEN ADDED SUCCESSFULLY");
       }
 
       @Override
       @Transactional(readOnly = true)
-      public List<Order> showAllOrder(Long customerId) {
-            List<Order> orderList = repository.findById(customerId).get().getOrderList();
+      public List<FilterOrderResponseDTO> showAllOrders(Long clientId) {
+            List<FilterOrderResponseDTO> orDTS = new ArrayList<>();
+            List<Order> orderList = repository.findById(clientId).get().getOrderList();
             if (orderList.isEmpty())
-                  return null;
-            return orderList.stream().toList();
+                  return orDTS;
+            orderList.forEach(o -> orDTS.add(orderMapper.convertToFilterDTO(o)));
+            return orDTS;
       }
 
       @Override
       @Transactional(readOnly = true)
-      public Long getCustomerCredit(Long customerId) {
-            Optional<Customer> customer = repository.findById(customerId);
-            return customer.map(Customer::getCredit).orElse(null);
+      public Long getCustomerCredit(Long clientId) {
+            Optional<Customer> client = repository.findById(clientId);
+            return client.get().getCredit();
       }
 
+      @Override
+      public List<FilterOrderResponseDTO> filterOrder(String orderStatus, Long clientId) {
+            Optional<Customer> client = repository.findById(clientId);
+            List<Order> dbOrderList = client.get().getOrderList();
+            List<FilterOrderResponseDTO> orDTO = new ArrayList<>();
+            if (dbOrderList.isEmpty())
+                  return orDTO;
+            List<Order> orderList = dbOrderList.stream().filter(o ->
+                   o.getOrderStatus().name().equals(orderStatus)).toList();
+            if (orderList.isEmpty())
+                  return orDTO;
+            orderList.forEach(o ->
+                   orDTO.add(orderMapper.convertToFilterDTO(o)));
+            return orDTO;
+      }
 
       @Override
-      public void increaseCustomerCredit(Customer customer, Long price) {
-            validation.checkPositiveNumber(customer.getId());
-            validation.checkPositiveNumber(price);
-            Optional<Customer> dbClient = repository.findById(customer.getId());
+      public ProjectResponse changeOrderStatusToPaidByOnlinePayment(CustomerIdOrderIdDTO dto) {
+            validation.checkPositiveNumber(dto.getCustomerId());
+            validation.checkPositiveNumber(dto.getOrderId());
+            Optional<Customer> dbClient = repository.findById(dto.getCustomerId());
             if (dbClient.isEmpty())
                   throw new CustomerNotExistException("not found user");
-            dbClient.get().setCredit(dbClient.get().getCredit() + price);
+            Optional<Order> order = orderService.findById(dto.getOrderId());
+            if (order.isEmpty())
+                  throw new OrderIsNotExistException("ont found order");
+            accounting(order.get());
             repository.save(dbClient.get());
-
+            return new ProjectResponse("200", "payment was successfully");
       }
 
       @Override
-      public void paidByInAppCredit(Long orderId, Users customer) {
+      public ProjectResponse increaseCustomerCredit(CustomerIdPriceDTO dto) {
+            validation.checkPositiveNumber(dto.getCustomerId());
+            validation.checkPositiveNumber(dto.getPrice());
+            Optional<Customer> customerOptional = repository.findById(dto.getCustomerId());
+            if (customerOptional.isEmpty())
+                  throw new CustomerNotExistException("not found user");
+            customerOptional.get().setCredit(customerOptional.get().getCredit() + dto.getPrice());
+            repository.save(customerOptional.get());
+            return new ProjectResponse("200", "your account credit has been successfully " +
+                                              "increased by $" + dto.getPrice() + ".");
+      }
+
+      @Override
+      public ProjectResponse paidByInAppCredit(Long orderId, Users customer) {
             validation.checkPositiveNumber(orderId);
             validation.checkOwnerOfTheOrder(orderId, (Customer) customer);
-            Optional<Customer> optionalCustomer = repository.findById(customer.getId());
+            Optional<Customer> dbClient = repository.findById(customer.getId());
             Optional<Order> order = orderService.findById(orderId);
-            Long credit = optionalCustomer.get().getCredit();
+            Long credit = dbClient.get().getCredit();
             Long offerPrice = paymentPriceCalculator(orderId);
             if (credit < offerPrice)
                   throw new AmountLessExseption("not enough credit to pay in app");
             ((Customer) customer).setCredit(credit - offerPrice);
-            repository.save(optionalCustomer.get());
+            accounting(order.get());
+            repository.save(dbClient.get());
+            return new ProjectResponse("200", "payment was successful");
       }
 
+      private void accounting(Order order) {
+            order.setOrderStatus(PAID);
+            Offer offer = order.getOfferList().stream().filter(o ->
+                   o.getOfferStatus().equals(ACCEPTED)).findFirst().get();
+            orderService.save(order);
+            Long offerPrice = offer.getProposedPrice();
+            Specialist specialist = offer.getSpecialist();
+            long managerShare = Math.round(offerPrice * 0.3);
+            specialist.setCredit(specialist.getCredit() + offerPrice - managerShare);
+            specialistService.save(specialist);
+      }
 
       @Override
-      public void addAddress(Address address, Long customerId) {
-            validation.checkAddress(address);
-            Optional<Customer> customer = repository.findById(customerId);
-            address.setCustomer(customer.get());
-            customer.get().getAddressList().add(address);
-            if (customer.get().getCustomerStatus().equals(CustomerStatus.NEW))
-                  customer.get().setCustomerStatus(HAS_NOT_ORDER_YET);
-            repository.save(customer.get());
+      public ModelAndView increaseAccountBalance(Long price, Long customerId, Model model) {
+            validation.checkPositiveNumber(price);
+            BalancePageDTO balancePageDTO = new BalancePageDTO();
+            balancePageDTO.setCustomertId(customerId);
+            balancePageDTO.setPrice(price);
+            setupCaptcha(balancePageDTO);
+            model.addAttribute("bdto", balancePageDTO);
+            return new ModelAndView("incBalance");
+      }
 
+      @Override
+      public ModelAndView payByOnlinePayment(Long orderId, Users users, Model model) {
+            validation.checkPositiveNumber(orderId);
+            validation.checkOwnerOfTheOrder(orderId, (Customer) users);
+            PaymentPageDTO paymentPageDTO = new PaymentPageDTO();
+            CustomerIdOrderIdDTO customerIdOrderIdDTO = new CustomerIdOrderIdDTO(users.getId(), orderId);
+            paymentPageDTO.setCustomerIdOrderIdDTO(customerIdOrderIdDTO);
+            paymentPageDTO.setPrice(paymentPriceCalculator(orderId));
+            setupCaptcha(paymentPageDTO);
+            model.addAttribute("dto", paymentPageDTO);
+            return new ModelAndView("payment");
+      }
+
+      private void setupCaptcha(PaymentPageDTO dto) {
+            Captcha captcha = CaptchaUtil.createCaptcha(350, 100);
+            dto.setHidden(captcha.getAnswer());
+            dto.setCaptcha("");
+            dto.setImage(CaptchaUtil.encodeBase64(captcha));
+      }
+
+      private void setupCaptcha(BalancePageDTO dto) {
+            Captcha captcha = CaptchaUtil.createCaptcha(350, 100);
+            dto.setHidden(captcha.getAnswer());
+            dto.setCaptcha("");
+            dto.setImage(CaptchaUtil.encodeBase64(captcha));
+      }
+
+      @Override
+      public ProjectResponse addAddress(AddressDTO addressDTO, Long clientId) {
+            validation.checkAddress(addressDTO);
+            Optional<Customer> client = repository.findById(clientId);
+            Address address = addressMapper.convertToAddress(addressDTO);
+            address.setCustomer(client.get());
+            client.get().getAddressList().add(address);
+            if (client.get().getCustomerStatus().equals(NEW))
+                  client.get().setCustomerStatus(HAS_NOT_ORDER_YET);
+            repository.save(client.get());
+            return new ProjectResponse("200", "ADDED NEW ADDRESS SUCCESSFULLY");
       }
 
       private Long paymentPriceCalculator(Long orderId) {
@@ -211,28 +347,34 @@ public class CustomerServiceImpl extends BaseEntityServiceImpl<Customer, Long, C
 
       @Override
       @Transactional(readOnly = true)
-      public List<Offer> findOfferListByOrderIdBasedOnProposedPrice(Long orderId, Users users) {
+      public List<OfferResponseDTO> findOfferListByOrderIdBasedOnProposedPrice(Long orderId, Users users) {
             validation.checkPositiveNumber(orderId);
             validation.checkOwnerOfTheOrder(orderId, (Customer) users);
+            List<OfferResponseDTO> orDTOS = new ArrayList<>();
             List<Offer> list = offerService.findOfferListByOrderIdBasedOnProposedPrice(orderId);
             if (list.isEmpty())
-                  return null;
-            return list.stream().toList();
+                  return orDTOS;
+            list.forEach(
+                   o -> orDTOS.add(offerMapper.convertToDTO(o)));
+            return orDTOS;
       }
 
       @Override
       @Transactional(readOnly = true)
-      public List<Offer> findOfferListByOrderIdBasedOnSpecialistScore(Long orderId, Users users) {
+      public List<OfferResponseDTO> findOfferListByOrderIdBasedOnSpecialistScore(Long orderId, Users users) {
             validation.checkPositiveNumber(orderId);
             validation.checkOwnerOfTheOrder(orderId, (Customer) users);
+            List<OfferResponseDTO> orDTOS = new ArrayList<>();
             List<Offer> list = offerService.findOfferListByOrderIdBasedOnSpecialistScore(orderId);
             if (list.isEmpty())
-                  return null;
-            return list.stream().toList();
+                  return orDTOS;
+            list.forEach(
+                   o -> orDTOS.add(offerMapper.convertToDTO(o)));
+            return orDTOS;
       }
 
       @Override
-      public void chooseSpecialistForOrder(Long offerId, Users users) {
+      public ProjectResponse chooseSpecialistForOrder(Long offerId, Users users) {
             validation.checkPositiveNumber(offerId);
             validation.checkOfferBelongToTheOrder(offerId, (Customer) users);
             Optional<Offer> offer = offerService.findById(offerId);
@@ -242,66 +384,156 @@ public class CustomerServiceImpl extends BaseEntityServiceImpl<Customer, Long, C
                   throw new OfferStatusException(" this offer alrady rejected");
             else
                   orderService.chooseOffer(offer.get().getOrder(), offerId);
-
+            return new ProjectResponse("200", "CHOOSE SUCCESSFULLY");
       }
 
 
       @Override
-      public void changeOrderStatusToStarted(Long orderId, Users users) {
+      public ProjectResponse changeOrderStatusToStarted(Long orderId, Users users) {
             validation.checkPositiveNumber(orderId);
             validation.checkOwnerOfTheOrder(orderId, (Customer) users);
             Optional<Order> order = orderService.findById(orderId);
             if (!order.get().getOrderStatus().equals(WAITING_FOR_SPECIALIST_TO_COME))
                   throw new OrderIsNotExistException
-                         ("the status of this order is not yet \"WAITING FOR SPECIALIST TO COME\"!");
+                         ("the status of this order is not yet \"WAITING FOR EXPERT TO COME\"!");
             order.get().getOfferList().forEach(o -> {
-                  if (!o.getOfferStatus().equals(ACCEPTED))
-                        if (!o.getExecutionTime().isBefore(LocalDateTime.now())) {
-                              throw new TimeException("the specialist has not arrived at your place yet!");
-                        }});
+                  if (o.getOfferStatus().equals(ACCEPTED))
+                        if (!o.getExecutionTime().isBefore(LocalDateTime.now()))
+                              throw new TimeException("the worker has not arrived at your place yet!");
+            });
             order.get().setOrderStatus(STARTED);
             orderService.save(order.get());
-
+            return new ProjectResponse("200", "ORDER STATUS CHANGED SUCCESSFULLY");
       }
 
       @Override
-      public void changeOrderStatusToDone(Long orderId, Users users) {
+      public ProjectResponse changeOrderStatusToDone(Long orderId, Users users) {
             validation.checkPositiveNumber(orderId);
             validation.checkOwnerOfTheOrder(orderId, (Customer) users);
             Optional<Order> order = orderService.findById(orderId);
             if (!order.get().getOrderStatus().equals(STARTED))
                   throw new OrderIsNotExistException
                          ("the status of this order is not yet \"STARTED\"!");
-            Offer[] offer = new Offer[1];
+            final Offer[] offer = new Offer[1];
             order.get().getOfferList().forEach(o -> {
                   if (o.getOfferStatus().equals(ACCEPTED))
                         offer[0] = o;
             });
             order.get().setOrderStatus(DONE);
             orderService.save(order.get());
-
+            int hourlyDelay = (LocalDateTime.now().getHour()) - (offer[0].getEndTime().getHour());
+            if (hourlyDelay > 0) {
+                  Specialist specialist = offer[0].getSpecialist();
+                  specialist.delay(hourlyDelay);
+                  specialistService.save(specialist);
+                  String delayFormat = " HOUR";
+                  if (hourlyDelay > 1)
+                        delayFormat = " HOURS";
+                  return new ProjectResponse("200", "ORDER STATUS CHANGED SUCCESSFULLY WITH " +
+                                                    hourlyDelay + delayFormat + "DELAY");
+            }
+            return new ProjectResponse("200", "ORDER STATUS CHANGED SUCCESSFULLY");
       }
 
       @Override
-      public void registerComment(Comment comment, Users users) {
-            validation.checkPositiveNumber(comment.getOrder().getId());
-            validation.checkOwnerOfTheOrder(comment.getOrder().getId(), (Customer) users);
-            validation.checkScore(comment.getScore());
-            if (comment.getTextComment().isBlank())
-                  comment.setTextComment(PRE_WRITTEN_MESSAGE);
+      public ProjectResponse registerComment(CommentRequestDTO dto, Users users) {
+            validation.checkPositiveNumber(dto.getOrderId());
+            validation.checkOwnerOfTheOrder(dto.getOrderId(), (Customer) users);
+            validation.checkScore(dto.getScore());
+            if (dto.getComment().isBlank())
+                  dto.setComment(PRE_WRITTEN_MESSAGE);
             else
-                  validation.checkText(comment.getTextComment());
-            Optional<Order> order = orderService.findById(comment.getOrder().getId());
+                  validation.checkText(dto.getComment());
+            Optional<Order> order = orderService.findById(dto.getOrderId());
             if (!order.get().getOrderStatus().equals(DONE))
                   throw new OrderIsNotExistException
                          ("the status of this order is not yet \"DONE\"!");
             Specialist specialist = order.get().getOfferList().stream().filter(o ->
                    o.getOfferStatus().equals(ACCEPTED)).findFirst().get().getSpecialist();
+            Comment comment = commentMapper.convertToComment(dto);
             comment.setOrder(order.get());
             commentService.save(comment);
             order.get().setComment(comment);
             orderService.save(order.get());
-
+            return new ProjectResponse("200",
+                   "THE COMMENT ABOUT THE ORDER WAS SUCCESSFULLY REGISTERED.");
       }
 
+      @Override
+      public List<FilterUserResponseDTO> customerFilter(FilterUserDTO clientDTO) {
+
+            List<FilterUserResponseDTO> fcDTOS = new ArrayList<>();
+            List<Predicate> predicateList = new ArrayList<>();
+            CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
+            CriteriaQuery<Customer> clientCriteriaQuery = criteriaBuilder.createQuery(Customer.class);
+            Root<Customer> clientRoot = clientCriteriaQuery.from(Customer.class);
+
+            createFilters(clientDTO, predicateList, criteriaBuilder, clientRoot);
+            Predicate[] predicates = new Predicate[predicateList.size()];
+            predicateList.toArray(predicates);
+            clientCriteriaQuery.select(clientRoot).where(predicates);
+            List<Customer> resultList = entityManager.createQuery(clientCriteriaQuery).getResultList();
+            if (resultList.isEmpty())
+                  return fcDTOS;
+            resultList.forEach(rl -> fcDTOS.add(customerMapper.convertToFilterDTO(rl)));
+            return fcDTOS;
+      }
+
+      private void createFilters(FilterUserDTO dto, List<Predicate> predicateList,
+                                 CriteriaBuilder criteriaBuilder, Root<Customer> clientRoot) {
+            if (dto.getFirstname() != null) {
+                  String firstname = "%" + dto.getFirstname() + "%";
+                  predicateList.add(criteriaBuilder.like(clientRoot.get("firstname"), firstname));
+            }
+            if (dto.getLastname() != null) {
+                  String lastname = "%" + dto.getLastname() + "%";
+                  predicateList.add(criteriaBuilder.like(clientRoot.get("lastname"), lastname));
+            }
+            if (dto.getUsername() != null) {
+                  String email = "%" + dto.getUsername() + "%";
+                  predicateList.add(criteriaBuilder.like(clientRoot.get("email"), email));
+            }
+            if (dto.getIsActive() != null)
+                  if (dto.getIsActive())
+                        predicateList.add(criteriaBuilder.isTrue(clientRoot.get("isActive")));
+                  else
+                        predicateList.add(criteriaBuilder.isFalse(clientRoot.get("isActive")));
+
+            if (dto.getUserStatus() != null)
+                  predicateList.add(criteriaBuilder.equal(clientRoot.get("clientStatus"),
+                         dto.getUserStatus()));
+
+            if (dto.getMinCredit() == null && dto.getMaxCredit() != null)
+                  dto.setMinCredit(0L);
+            if (dto.getMinCredit() != null && dto.getMaxCredit() == null)
+                  dto.setMaxCredit(Long.MAX_VALUE);
+            if (dto.getMinCredit() != null && dto.getMaxCredit() != null)
+                  predicateList.add(criteriaBuilder.between(clientRoot.get("credit"),
+                         dto.getMinCredit(), dto.getMaxCredit()));
+
+            if (dto.getMinUserCreationAt() == null && dto.getMaxUserCreationAt() != null)
+                  dto.setMinUserCreationAt(LocalDateTime.now().minusYears(2));
+            if (dto.getMinUserCreationAt() != null && dto.getMaxUserCreationAt() == null)
+                  dto.setMaxUserCreationAt(LocalDateTime.now());
+            if (dto.getMinUserCreationAt() != null && dto.getMaxUserCreationAt() != null)
+                  predicateList.add(criteriaBuilder.between(clientRoot.get("registrationTime"),
+                         dto.getMinUserCreationAt(), dto.getMaxUserCreationAt()));
+
+            if (dto.getMinNumberOfOperation() == null && dto.getMaxNumberOfOperation() != null)
+                  dto.setMinNumberOfOperation(0);
+            if (dto.getMinNumberOfOperation() != null && dto.getMaxNumberOfOperation() == null)
+                  dto.setMaxNumberOfOperation(Integer.MAX_VALUE);
+            if (dto.getMinNumberOfOperation() != null && dto.getMaxNumberOfOperation() != null)
+                  predicateList.add(criteriaBuilder.between(clientRoot.get("numberOfOperation"),
+                         dto.getMinNumberOfOperation(), dto.getMaxNumberOfOperation()));
+
+            if (dto.getMinNumberOfDoneOperation() == null && dto.getMaxNumberOfDoneOperation() != null)
+                  dto.setMinNumberOfDoneOperation(0);
+            if (dto.getMinNumberOfDoneOperation() != null && dto.getMaxNumberOfDoneOperation() == null)
+                  dto.setMaxNumberOfDoneOperation(Integer.MAX_VALUE);
+            if (dto.getMinNumberOfDoneOperation() != null && dto.getMaxNumberOfDoneOperation() != null)
+                  predicateList.add(criteriaBuilder.between(clientRoot.get("paidCounter"),
+                         dto.getMinNumberOfDoneOperation(), dto.getMaxNumberOfDoneOperation()));
+
+      }
 }
