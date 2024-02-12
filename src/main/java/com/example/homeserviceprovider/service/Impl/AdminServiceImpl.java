@@ -6,18 +6,30 @@ import com.example.homeserviceprovider.domain.service.SubServices;
 import com.example.homeserviceprovider.domain.user.Admin;
 import com.example.homeserviceprovider.domain.user.Specialist;
 import com.example.homeserviceprovider.domain.user.enums.SpecialistStatus;
+import com.example.homeserviceprovider.dto.request.*;
+import com.example.homeserviceprovider.dto.response.*;
 import com.example.homeserviceprovider.exception.*;
+import com.example.homeserviceprovider.mapper.*;
 import com.example.homeserviceprovider.repository.AdminRepository;
+import com.example.homeserviceprovider.security.token.entity.Token;
+import com.example.homeserviceprovider.security.token.service.TokenService;
 import com.example.homeserviceprovider.service.*;
 
 
 import com.example.homeserviceprovider.util.Validation;
 
+import org.springframework.mail.SimpleMailMessage;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
+
+import static com.example.homeserviceprovider.domain.user.enums.Role.CUSTOMER;
+import static com.example.homeserviceprovider.domain.user.enums.Role.SPECIALIST;
 
 
 @Service
@@ -26,179 +38,258 @@ public class AdminServiceImpl extends BaseEntityServiceImpl<Admin, Long, AdminRe
        implements AdminService {
       private final MainServiceService mainServiceService;
       private final SubServicesService subServicesService;
+      private final OrderService orderService;
       private final SpecialistService specialistService;
+      private final CustomerService customerService;
 
+      private final MainServiceMapper mainServiceMapper;
+      private final SubServicesMapper subServicesMapper;
+      private final SpecialistMapper specialistMapper;
+      private final AdminMapper adminMapper;
+      private final FilterMapper filterMapper;
 
       private final Validation validation;
+      private final TokenService tokenService;
+      private final EmailService emailService;
 
-      public AdminServiceImpl(AdminRepository repository, MainServiceService mainServiceService, SubServicesService subServicesService,
-                              SpecialistService specialistService,
-                              Validation validation) {
+      public AdminServiceImpl(AdminRepository repository, MainServiceService mainServiceService,
+                              SubServicesService subServicesService, OrderService orderService, SpecialistService specialistService,
+                              CustomerService customerService, MainServiceMapper mainServiceMapper,
+                              SubServicesMapper subServicesMapper, SpecialistMapper specialistMapper,
+                              AdminMapper adminMapper, FilterMapper filterMapper, Validation validation,
+                              TokenService tokenService, EmailService emailService) {
             super(repository);
             this.mainServiceService = mainServiceService;
             this.subServicesService = subServicesService;
+            this.orderService = orderService;
             this.specialistService = specialistService;
+            this.customerService = customerService;
+            this.mainServiceMapper = mainServiceMapper;
+            this.subServicesMapper = subServicesMapper;
+            this.specialistMapper = specialistMapper;
+            this.adminMapper = adminMapper;
+            this.filterMapper = filterMapper;
             this.validation = validation;
+            this.tokenService = tokenService;
+            this.emailService = emailService;
       }
 
       @Override
-      public void addNewAdmin(Admin admin) {
-            validation.checkEmail(admin.getEmail());
-            if (repository.findByEmail(admin.getEmail()).isPresent())
+      public String addNewAdmin(AdminRegistrationDTO dto) {
+            validation.checkEmail(dto.getEmail());
+            if (repository.findByEmail(dto.getEmail()).isPresent())
                   throw new DuplicateEmailException("this Email already exist!");
+            Admin admin = adminMapper.convertToNewAdmin(dto);
             repository.save(admin);
-
+            String newToken = UUID.randomUUID().toString();
+            Token token = new Token(LocalDateTime.now(), LocalDateTime.now().plusMinutes(15), admin);
+            token.setToken(newToken);
+            tokenService.saveToken(token);
+            SimpleMailMessage mailMessage =
+                   emailService.createEmail(admin.getEmail(), admin.getFirstname(),
+                          token.getToken(), admin.getRole());
+            emailService.sendEmail(mailMessage);
+            return newToken;
       }
 
       @Override
-      public void createMainService(MainServices mainServices) {
-            validation.checkText(mainServices.getName());
-            if (mainServiceService.findByName(mainServices.getName()).isPresent())
+      public ProjectResponse createMainService(MainServiceRequestDTO msDTO) {
+            validation.checkText(msDTO.getName());
+            if (mainServiceService.findByName(msDTO.getName()).isPresent())
                   throw new MainServicesIsExistException("this main service already exist!");
-            MainServices newMainService = new MainServices(mainServices.getName());
+            MainServices newMainService = new MainServices(msDTO.getName());
             mainServiceService.save(newMainService);
+            return new ProjectResponse("200", "ADDED SUCCESSFUL");
       }
 
       @Override
-      public void deleteMainService(String name) {
+      public ProjectResponse deleteMainService(String name) {
             validation.checkText(name);
             if (mainServiceService.findByName(name).isEmpty())
                   throw new MainServicesIsNotExistException("this main service dose not exist!");
             mainServiceService.deleteMainServiceByName(name);
+            return new ProjectResponse("200", "DELETED SUCCESSFUL");
       }
 
       @Override
-      public void addSubServices(SubServices subServices) {
-            String mainServiceName = subServices.getMainServices().getName();
-            if(mainServiceName.isBlank()){
-                  throw new MainServicesIsNotExistException("this main service dose not exist!");
-            }
-            String subServicesName = subServices.getName();
+      public ProjectResponse addSubServices(SubServicesRequestDTO subServicesRequestDTO) {
+            String mainServiceName = subServicesRequestDTO.getMainServiceRequest();
+            String subServicesName = subServicesRequestDTO.getName();
             validation.checkText(mainServiceName);
             validation.checkText(subServicesName);
-            validation.checkPositiveNumber(subServices.getBasePrice());
-            validation.checkBlank(subServices.getDescription());
+            validation.checkPositiveNumber(subServicesRequestDTO.getBasePrice());
+            validation.checkBlank(subServicesRequestDTO.getDescription());
             Optional<MainServices> mainService = mainServiceService.findByName(mainServiceName);
             if (mainService.isEmpty())
                   throw new MainServicesIsNotExistException("this main service dose not exist!");
             if (subServicesService.findByName(subServicesName).isPresent())
-                  throw new SubServicesIsExistException("this subServices already exist!");
-            subServices.setMainServices(mainService.get());
-            subServicesService.save(subServices);
-
+                  throw new SubServicesIsExistException("this job already exist!");
+            SubServices newSubServices = subServicesMapper.convertToJob(subServicesRequestDTO);
+            newSubServices.setMainServices(mainService.get());
+            subServicesService.save(newSubServices);
+            return new ProjectResponse("200", "ADDED SUCCESSFUL");
       }
 
       @Override
-      public void deleteSubServices(String name) {
+      public ProjectResponse deleteSubServices(String name) {
             validation.checkText(name);
             if (subServicesService.findByName(name).isEmpty())
-                  throw new SubServicesIsNotExistException("this subServices dose not exist!");
+                  throw new SubServicesIsNotExistException("this job dose not exist!");
             subServicesService.deleteSubServicesByName(name);
+            return new ProjectResponse("200", "DELETED SUCCESSFUL");
       }
 
       @Override
-      public void addSpecialistToSubServices(Long subServicesId, Long specialistId) {
-            validation.checkPositiveNumber(subServicesId);
-            validation.checkPositiveNumber(specialistId);
-            Optional<SubServices> subServices = subServicesService.findById(subServicesId);
-            if (subServices.isEmpty())
-                  throw new SubServicesIsNotExistException("this SubServices dose not exist!");
-            Optional<Specialist> worker = specialistService.findById(specialistId);
-            if (worker.isEmpty())
-                  throw new SpecialistIsNotExistException("this specialist does not exist!");
-            if (!(worker.get().getStatus().equals(SpecialistStatus.CONFIRMED)))
-                  throw new SpecialistNoAccessException("the status of expert is not CONFIRMED");
-            worker.get().addSubServices(subServices.get());
-            specialistService.save(worker.get());
-
-      }
-
-      @Override
-      public void deleteSubServicesFromSpecialist(Long subServicesId, Long specialistId) {
-            validation.checkPositiveNumber(subServicesId);
-            validation.checkPositiveNumber(specialistId);
-            Optional<SubServices> optionalSubServices = subServicesService.findById(subServicesId);
-            if (optionalSubServices.isEmpty())
-                  throw new SubServicesIsNotExistException("this subServices dose not exist!");
-            Optional<Specialist> specialist = specialistService.findById(specialistId);
+      public ProjectResponse addSpecialistToSubServices(Long jobId, Long workerId) {
+            validation.checkPositiveNumber(jobId);
+            validation.checkPositiveNumber(workerId);
+            Optional<SubServices> job = subServicesService.findById(jobId);
+            if (job.isEmpty())
+                  throw new SubServicesIsNotExistException("this job dose not exist!");
+            Optional<Specialist> specialist = specialistService.findById(workerId);
             if (specialist.isEmpty())
                   throw new SpecialistIsNotExistException("this specialist does not exist!");
-            specialist.get().deleteSubServices(optionalSubServices.get());
+            if (!(specialist.get().getStatus().equals(SpecialistStatus.CONFIRMED)))
+                  throw new SpecialistNoAccessException("the status of expert is not CONFIRMED");
+            specialist.get().addSubServices(job.get());
             specialistService.save(specialist.get());
+            return new ProjectResponse("200", "ADDED SUCCESSFUL");
+      }
 
+      @Override
+      public ProjectResponse deleteSubServicesFromSpecialist(Long jobId, Long workerId) {
+            validation.checkPositiveNumber(jobId);
+            validation.checkPositiveNumber(workerId);
+            Optional<SubServices> service = subServicesService.findById(jobId);
+            if (service.isEmpty())
+                  throw new SubServicesIsNotExistException("this service dose not exist!");
+            Optional<Specialist> specialist = specialistService.findById(workerId);
+            if (specialist.isEmpty())
+                  throw new SpecialistIsNotExistException("this specialist does not exist!");
+            specialist.get().deleteSubServices(service.get());
+            specialistService.save(specialist.get());
+            return new ProjectResponse("200", "DELETED SUCCESSFUL");
       }
 
       @Override
       @Transactional(readOnly = true)
-      public List<MainServices> findAllMainService() {
+      public List<MainServiceResponseDTO> findAllMainService() {
             List<MainServices> mainServices = mainServiceService.findAll();
-            return mainServices.stream().toList();
-
+            List<MainServiceResponseDTO> msDTOS = new ArrayList<>();
+            mainServices.forEach(ms -> msDTOS.add(mainServiceMapper.convertToDTO(ms)));
+            return msDTOS;
       }
 
       @Override
       @Transactional(readOnly = true)
-      public List<SubServices> findAllSubServices() {
-            List<SubServices> subServicesList = subServicesService.findAll();
-            return subServicesList.stream().toList();
+      public List<SubServicesResponseDTO> findAllSubServices() {
+            List<SubServices> jobs = subServicesService.findAll();
+            List<SubServicesResponseDTO> jDTOS = new ArrayList<>();
+            jobs.forEach(j -> jDTOS.add(subServicesMapper.convertToDTO(j)));
+            return jDTOS;
       }
 
       @Override
-      public void editSubServicesCustom(SubServices subServices) {
-            validation.checkText(subServices.getName());
-            Optional<SubServices> subServicesOptional;
-            if (subServices.getId() != null) {
-                  validation.checkPositiveNumber(subServices.getId());
-                  subServicesOptional = subServicesService.findById(subServices.getId());
-                  if (subServicesOptional.isEmpty())
-                        throw new SubServicesIsNotExistException("this subservices dose not exist!");
-                  subServicesOptional.get().setName(subServices.getName());
+      public ProjectResponse editSubServicesCustom(UpdateSubServicesDTO updateSubServicesDTO) {
+            validation.checkText(updateSubServicesDTO.getName());
+            Optional<SubServices> job;
+            if (updateSubServicesDTO.getSubServicesId() != null) {
+                  validation.checkPositiveNumber(updateSubServicesDTO.getSubServicesId());
+                  job = subServicesService.findById(updateSubServicesDTO.getSubServicesId());
+                  if (job.isEmpty())
+                        throw new SubServicesIsNotExistException("this job dose not exist!");
+                  job.get().setName(updateSubServicesDTO.getName());
             } else {
-                  subServicesOptional = subServicesService.findByName(subServices.getName());
-                  if (subServicesOptional.isEmpty())
-                        throw new SubServicesIsNotExistException("this subservices dose not exist!");
+                  job = subServicesService.findByName(updateSubServicesDTO.getName());
+                  if (job.isEmpty())
+                        throw new SubServicesIsNotExistException("this job dose not exist!");
             }
-            if (subServices.getDescription().isEmpty() &&
-                subServices.getBasePrice() == 0L) {
+            if (updateSubServicesDTO.getDescription().isEmpty() &&
+                updateSubServicesDTO.getBasePrice() == 0L) {
                   throw new SubServicesIsNotExistException("change titles are empty!");
-            } else if (!subServices.getDescription().isEmpty()) {
-                  validation.checkText(subServices.getDescription());
-                  subServicesOptional.get().setDescription(subServices.getDescription());
+            } else if (!updateSubServicesDTO.getDescription().isEmpty()) {
+                  validation.checkText(updateSubServicesDTO.getDescription());
+                  job.get().setDescription(updateSubServicesDTO.getDescription());
             }
-            if (subServices.getBasePrice() != 0L) {
-                  validation.checkPositiveNumber(subServices.getBasePrice());
-                  subServicesOptional.get().setBasePrice(subServices.getBasePrice());
+            if (updateSubServicesDTO.getBasePrice() != 0L) {
+                  validation.checkPositiveNumber(updateSubServicesDTO.getBasePrice());
+                  job.get().setBasePrice(updateSubServicesDTO.getBasePrice());
             }
-            subServicesService.save(subServicesOptional.get());
-
-
-      }
-
-
-      @Override
-      public void confirmSpecialist(Long specialistId) {
-            validation.checkPositiveNumber(specialistId);
-            Optional<Specialist> optionalSpecialist = specialistService.findById(specialistId);
-            if (optionalSpecialist.isEmpty())
-                  throw new SpecialistIsNotExistException("this specialists does not exist!");
-
-            if (optionalSpecialist.get().getStatus().equals(SpecialistStatus.CONFIRMED))
-                  throw new SpecialistIsHoldsExistException("this specialists is currently certified!");
-            optionalSpecialist.get().setStatus(SpecialistStatus.CONFIRMED);
-
-            specialistService.save(optionalSpecialist.get());
+            subServicesService.save(job.get());
+            return new ProjectResponse("200", "UPDATED SUCCESSFUL");
 
       }
 
       @Override
       @Transactional(readOnly = true)
-      public List<SubServices> findAllSubServicesByMainService(Long mainServiceId) {
+      public List<SpecialistResponseDTO> findAllSpecialist() {
+            List<Specialist> workers = specialistService.findAll();
+            List<SpecialistResponseDTO> wDTOS = new ArrayList<>();
+            if (!workers.isEmpty())
+                  workers.forEach(w -> wDTOS.add(specialistMapper.convertToDTO(w)));
+            return wDTOS;
+      }
+
+      @Override
+      public ProjectResponse confirmSpecialist(Long workerId) {
+            validation.checkPositiveNumber(workerId);
+            Optional<Specialist> worker = specialistService.findById(workerId);
+            if (worker.isEmpty())
+                  throw new SpecialistIsNotExistException("this worker does not exist!");
+            if (worker.get().getIsActive()) {
+                  if (worker.get().getStatus().equals(SpecialistStatus.CONFIRMED))
+                        throw new SpecialistIsHoldsExistException("this worker is currently certified!");
+                  worker.get().setStatus(SpecialistStatus.CONFIRMED);
+            } else {
+                  worker.get().setIsActive(true);
+            }
+            specialistService.save(worker.get());
+            return new ProjectResponse("200", "UPDATED SUCCESSFUL");
+      }
+
+      @Override
+      @Transactional(readOnly = true)
+      public List<SubServicesResponseDTO> findAllSubServicessByMainService(Long mainServiceId) {
             validation.checkPositiveNumber(mainServiceId);
             if (mainServiceService.findById(mainServiceId).isEmpty())
                   throw new MainServicesIsNotExistException("this main service dose not exist!");
             return subServicesService.findByMainServiceId(mainServiceId);
       }
 
+      @Override
+      public ProjectResponse deActiveSpecialist(Long workerId) {
+            validation.checkPositiveNumber(workerId);
+            Optional<Specialist> specialist = specialistService.findById(workerId);
+            if (specialist.isEmpty())
+                  throw new SpecialistIsNotExistException("this specialist does not exist!");
+            if (!specialist.get().getIsActive())
+                  throw new SpecialistIsHoldsExistException("this specialist is currently deActive");
+            specialist.get().setIsActive(false);
+            specialistService.save(specialist.get());
+            return new ProjectResponse("200", "UPDATED SUCCESSFUL");
+
+      }
+
+      @Override
+      public List<FilterUserResponseDTO> userFilter(FilterUserDTO userDTO) {
+            List<FilterUserResponseDTO> filterUserResponseDTOList = new ArrayList<>();
+            if (userDTO.getUserType().equals(CUSTOMER.name())) {
+                  filterUserResponseDTOList.addAll(customerService.customerFilter(userDTO));
+            }
+            if (userDTO.getUserType().equals(SPECIALIST.name())) {
+                  filterUserResponseDTOList.addAll(specialistService.specialistFilter(userDTO));
+            }
+            if (userDTO.getUserType().equals("ALL")) {
+                  filterUserResponseDTOList.addAll(customerService.customerFilter(userDTO));
+                  filterUserResponseDTOList.addAll(specialistService.specialistFilter(userDTO));
+            }
+            return filterUserResponseDTOList;
+      }
+
+      @Override
+      public List<FilterOrderResponseDTO> orderFilter(FilterOrderDTO orderDTO) {
+            return orderService.ordersFilter(orderDTO);
+      }
 
       @Override
       public Optional<Admin> findByUsername(String email) {
