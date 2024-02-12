@@ -74,7 +74,4 @@ public class Order extends BaseEntity<Long> {
             this.orderStatus = WAITING_FOR_SPECIALIST_SUGGESTION;
       }
 
-      public Order(long id) {
-            super(id);
-      }
 }
