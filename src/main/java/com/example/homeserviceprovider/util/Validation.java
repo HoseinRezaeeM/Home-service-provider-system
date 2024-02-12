@@ -74,8 +74,8 @@ public class Validation {
         return true;
     }
 
-    public boolean checkOwnerOfTheOrder(Long orderId, Customer client) {
-        if (client.getOrderList().stream().filter(o -> o.getId().equals(orderId)).findFirst().isEmpty())
+    public boolean checkOwnerOfTheOrder(Long orderId, Customer customer) {
+        if (customer.getOrderList().stream().filter(o -> o.getId().equals(orderId)).findFirst().isEmpty())
             throw new OrderIsNotExistException("you are not the owner of this order");
         return true;
     }
@@ -124,7 +124,6 @@ public class Validation {
 
     public boolean checkAddress(AddressDTO dto) {
         if (
-                dto.getTitle().isBlank() ||
                 dto.getProvince().isBlank() ||
                 dto.getCity().isBlank() ||
                 dto.getAvenue().isBlank() ||
