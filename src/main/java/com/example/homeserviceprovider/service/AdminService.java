@@ -1,48 +1,57 @@
 package com.example.homeserviceprovider.service;
 
-import com.example.homeserviceprovider.domain.service.MainServices;
-import com.example.homeserviceprovider.domain.service.SubServices;
+
 import com.example.homeserviceprovider.domain.user.Admin;
 
+
+import com.example.homeserviceprovider.dto.request.*;
+import com.example.homeserviceprovider.dto.response.*;
 import com.example.homeserviceprovider.service.base.BaseUsersService;
-import org.springframework.stereotype.Service;
+
 
 
 import java.util.List;
 
 public interface AdminService extends BaseUsersService<Admin> {
 
-    @Override
-    void save(Admin admin);
+      @Override
+      void save(Admin admin);
 
-    @Override
-    List<Admin> findAll();
+      @Override
+      List<Admin> findAll();
 
-    void createMainService(MainServices mainServices);
+      ProjectResponse createMainService(MainServiceRequestDTO msDTO);
 
-    void deleteMainService(String name);
+      ProjectResponse deleteMainService(String name);
 
-    void addSubServices(SubServices subServices);
+      ProjectResponse addSubServices(SubServicesRequestDTO subServicesRequestDTO);
 
-    void deleteSubServices(String name);
+      ProjectResponse deleteSubServices(String name);
 
-    void addSpecialistToSubServices(Long subServicesId, Long specialistId);
+      ProjectResponse addSpecialistToSubServices(Long subServicesId, Long specialistId);
 
-    void deleteSubServicesFromSpecialist(Long subServicesId, Long specialistId);
+      ProjectResponse deleteSubServicesFromSpecialist(Long subServicesId, Long specialistId);
 
-    List<MainServices> findAllMainService();
+      List<MainServiceResponseDTO> findAllMainService();
 
-    List<SubServices> findAllSubServices();
+      List<SubServicesResponseDTO> findAllSubServices();
 
-    void editSubServicesCustom(SubServices subServices);
+      ProjectResponse editSubServicesCustom(UpdateSubServicesDTO updateSubServicesDTO);
 
+      List<SpecialistResponseDTO> findAllSpecialist();
 
-    void confirmSpecialist(Long specialistId);
+      ProjectResponse confirmSpecialist(Long specialistId);
 
-    List<SubServices> findAllSubServicesByMainService(Long mainServiceId);
+      List<SubServicesResponseDTO> findAllSubServicessByMainService(Long mainServiceId);
 
+      ProjectResponse deActiveSpecialist(Long specialistId);
 
-    void addNewAdmin(Admin admin);
+      List<FilterUserResponseDTO> userFilter(FilterUserDTO userDTO);
+
+      String addNewAdmin(AdminRegistrationDTO dto);
+
+      List<FilterOrderResponseDTO> orderFilter(FilterOrderDTO orderDTO);
+
 
 
 }
