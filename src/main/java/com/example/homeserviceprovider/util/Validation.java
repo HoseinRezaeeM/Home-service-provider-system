@@ -60,7 +60,7 @@ public class Validation {
         if (Objects.equals(null, imageName))
             throw new ImageFormatException("the image is empty!");
         checkBlank(imageName);
-        if (!imageName.contains("/jpeg"))
+        if (!imageName.contains("/jpg"))
             throw new ImageFormatException("the format of the image is incorrect!");
         long imageSize = (image.getSize()) / 1024;
         if (imageSize > 300L)
