@@ -43,7 +43,6 @@ public class Users extends BaseEntity<Long> implements UserDetails {
       }
 
 
-
       @Override
       public Collection<? extends GrantedAuthority> getAuthorities() {
             SimpleGrantedAuthority simpleGrantedAuthority = new SimpleGrantedAuthority(role.name());
@@ -54,6 +53,10 @@ public class Users extends BaseEntity<Long> implements UserDetails {
       public String getUsername() {
             return email;
       }
+
+      @Override
+      public String getPassword() {
+            return password;}
 
       @Override
       public boolean isAccountNonExpired() {
