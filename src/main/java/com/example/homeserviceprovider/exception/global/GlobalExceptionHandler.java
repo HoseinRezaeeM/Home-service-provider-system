@@ -2,6 +2,7 @@ package com.example.homeserviceprovider.exception.global;
 
 
 
+import com.example.homeserviceprovider.domain.user.Specialist;
 import com.example.homeserviceprovider.dto.response.ProjectResponse;
 import com.example.homeserviceprovider.exception.*;
 import org.springframework.http.ResponseEntity;
@@ -108,6 +109,7 @@ public class GlobalExceptionHandler {
                    new ProjectResponse("18", e.getMessage()));
       }
 
+
       @ExceptionHandler(OrderIsNotExistException.class)
       ResponseEntity<ProjectResponse> orderIsNotExistHandler(OrderIsNotExistException e) {
             return ResponseEntity.badRequest().body(
@@ -155,8 +157,16 @@ public class GlobalExceptionHandler {
             return ResponseEntity.badRequest().body(
                    new ProjectResponse("26", ae.getMessage()));
       }
-
-
+      @ExceptionHandler(ValidationTokenException.class)
+      ResponseEntity<ProjectResponse> ValidationTokenHandler(ValidationTokenException ae) {
+            return ResponseEntity.badRequest().body(
+                   new ProjectResponse("27", ae.getMessage()));
+      }
+      @ExceptionHandler(VerifyCodeException.class)
+      ResponseEntity<ProjectResponse> VerifyCodeHandler(VerifyCodeException ae) {
+            return ResponseEntity.badRequest().body(
+                   new ProjectResponse("28", ae.getMessage()));
+      }
 
       @ExceptionHandler(SpecialistIsHoldsExistException.class)
       ResponseEntity<ProjectResponse> specialistIsHoldsExistHandler(SpecialistIsHoldsExistException ae) {
