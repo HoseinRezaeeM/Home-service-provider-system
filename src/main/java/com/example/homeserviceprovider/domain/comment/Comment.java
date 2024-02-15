@@ -20,5 +20,8 @@ public class Comment extends BaseEntity<Long> {
       String textComment;
       @OneToOne
       Order order;
-
+      public Comment(int score, String comment) {
+            this.score = score;
+            this.textComment = comment;
+      }
 }
