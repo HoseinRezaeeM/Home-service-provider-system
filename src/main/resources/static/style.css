@@ -1,0 +1,130 @@
+body {
+    margin: 0;
+    color: #23d4c2;
+    font-family: 'Electrolize', sans-serif;
+    background-size: cover;
+    background-position: center;
+}
+
+.align-center {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+    align-items: center;
+    justify-content: center;
+}
+
+.card {
+    width: 500px;
+    height: 400px;
+    border-radius: 12px;
+    box-shadow: 2px 2px 0 #222, 2px 2px 15px rgba(0,0,0,0.9);
+    background: black;
+    background: -webkit-linear-gradient(left, #000000, #282828);
+    background: -o-linear-gradient(right, #000000, #282828);
+    background: -moz-linear-gradient(right, #000000, #282828);
+    background: linear-gradient(to right, #000000, #282828)
+}
+
+
+.form {
+    padding-top: 110px;
+}
+
+.card-title {
+    float:left;
+    margin-left: 15px;
+}
+
+.logo {
+    float: right;
+    margin-top: 15px;
+    margin-right: 15px;
+}
+
+label {
+    display: block;
+}
+
+.card-number {
+    float: left;
+    margin-left: 15px;
+    margin-bottom: 10px;
+    color: white;
+}
+.card-number input {
+    height: 30px;
+    background-color: transparent;
+    border: none;
+    font-family: 'Electrolize', sans-serif;
+    color: #fff;
+}
+
+.card-name {
+    clear: both;
+    float: left;
+    margin-left: 15px;
+    margin-bottom: 15px;
+    color: #fff;
+}
+
+.card-name input {
+    height: 30px;
+    background-color: transparent;
+    border: none;
+    color: white;
+    font-family: 'Electrolize', sans-serif;
+}
+
+input:focus {
+    color: #fff;
+    outline: none;
+    border-bottom: 1px solid white;
+}
+
+.select-date {
+    clear: both;
+    float: left;
+    margin-left: 15px;
+}
+
+.card-cvc {
+    float: right;
+    margin-right: 15px;
+}
+
+.card-cvc input {
+    background-color: transparent;
+    border: none;
+    color: #fff;
+    font-family: 'Electrolize', sans-serif;
+}
+
+select {
+    border: none;
+    background-color: rgba(255,255,255, 0.2);
+    color: #fff;
+}
+
+option {
+    color: #000000;
+}
+
+.buy-button {
+    font-family: 'Electrolize', sans-serif;
+    cursor: pointer;
+    position: relative;
+    margin-left: 350px;
+    margin-right: 100px;
+    padding: 10px 10px;
+    border-radius: 6px;
+    box-shadow: -2px 0px 6px 1px #000000;
+    background-color: #FFAB40;
+    border: none;
+    color: #fff;
+}
+
+.buy-button:hover {
+    background-color: #66BB6A;
+    transition: linear 0.2s;
+}
