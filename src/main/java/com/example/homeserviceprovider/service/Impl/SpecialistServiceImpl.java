@@ -6,7 +6,6 @@ import com.example.homeserviceprovider.domain.offer.enums.OfferStatus;
 import com.example.homeserviceprovider.domain.order.Order;
 import com.example.homeserviceprovider.domain.order.enums.OrderStatus;
 import com.example.homeserviceprovider.domain.service.MainServices;
-import com.example.homeserviceprovider.domain.service.SubServices;
 import com.example.homeserviceprovider.domain.user.Specialist;
 import com.example.homeserviceprovider.domain.user.enums.SpecialistStatus;
 import com.example.homeserviceprovider.dto.request.*;
@@ -21,6 +20,7 @@ import com.example.homeserviceprovider.security.token.service.TokenService;
 import com.example.homeserviceprovider.service.*;
 
 
+import com.example.homeserviceprovider.util.SaveImageToFile;
 import com.example.homeserviceprovider.util.Validation;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -52,9 +52,9 @@ public class SpecialistServiceImpl extends BaseEntityServiceImpl<Specialist, Lon
       private final OfferService offerService;
       private final OrderService orderService;
       private final MainServiceService mainService;
-      private final SubServicesService jobService;
+      private final SubServicesService subServicesService;
 
-      private final SpecialistMapper workerMapper;
+      private final SpecialistMapper specialistMapper;
       private final MainServiceMapper mainServiceMapper;
       private final OfferMapper offerMapper;
 
@@ -67,18 +67,18 @@ public class SpecialistServiceImpl extends BaseEntityServiceImpl<Specialist, Lon
       private EntityManager entityManager;
 
       public SpecialistServiceImpl(SpecialistRepository repository, OfferService offerService,
-                               OrderService orderService, MainServiceService mainService,
-                               SubServicesService jobService, SpecialistMapper workerMapper,
-                               MainServiceMapper mainServiceMapper, OfferMapper offerMapper,
-                               Validation validation, TokenService tokenService,
-                               EmailService emailService, PasswordEncoder passwordEncoder,
-                               EntityManager entityManager) {
+                                   OrderService orderService, MainServiceService mainService,
+                                   SubServicesService subServicesService, SpecialistMapper specialistMapper,
+                                   MainServiceMapper mainServiceMapper, OfferMapper offerMapper,
+                                   Validation validation, TokenService tokenService,
+                                   EmailService emailService, PasswordEncoder passwordEncoder,
+                                   EntityManager entityManager) {
             super(repository);
             this.offerService = offerService;
             this.orderService = orderService;
             this.mainService = mainService;
-            this.jobService = jobService;
-            this.workerMapper = workerMapper;
+            this.subServicesService = subServicesService;
+            this.specialistMapper = specialistMapper;
             this.mainServiceMapper = mainServiceMapper;
             this.offerMapper = offerMapper;
             this.validation = validation;
@@ -89,22 +89,25 @@ public class SpecialistServiceImpl extends BaseEntityServiceImpl<Specialist, Lon
       }
 
       @Override
-      public String addNewSpecialist(SpecialistRegistrationDTO workerRegistrationDTO) throws IOException {
-            validation.checkEmail(workerRegistrationDTO.getEmail());
-            if (repository.findByEmail(workerRegistrationDTO.getEmail()).isPresent())
+      public String addNewSpecialist(SpecialistRegistrationDTO specialistRegistrationDTO) throws IOException {
+            validation.checkEmail(specialistRegistrationDTO.getEmail());
+            if (repository.findByEmail(specialistRegistrationDTO.getEmail()).isPresent())
                   throw new DuplicateEmailException("this Email already exist!");
-            validation.checkPassword(workerRegistrationDTO.getPassword());
-            validation.checkText(workerRegistrationDTO.getFirstname());
-            validation.checkText(workerRegistrationDTO.getLastname());
-            validation.checkImage(workerRegistrationDTO.getFile());
-            Specialist worker = workerMapper.convertToNewSpecialist(workerRegistrationDTO);
-            repository.save(worker);
+            validation.checkPassword(specialistRegistrationDTO.getPassword());
+            validation.checkText(specialistRegistrationDTO.getFirstname());
+            validation.checkText(specialistRegistrationDTO.getLastname());
+            validation.checkImage(specialistRegistrationDTO.getFile());
+            Specialist specialist = specialistMapper.convertToNewSpecialist(specialistRegistrationDTO);
+            repository.save(specialist);
+            SaveImageToFile.saveImageToFile(specialist.getImage(),
+                   "C:\\Users\\sp\\IdeaProjects\\home-service-provider\\src\\main\\resources\\imageUploaded\\"
+                   + specialist.getFirstname()+""+specialist.getLastname() + ".jpg");
             String newToken = UUID.randomUUID().toString();
-            Token token = new Token(LocalDateTime.now(), LocalDateTime.now().plusMinutes(15), worker);
+            Token token = new Token(LocalDateTime.now(), LocalDateTime.now().plusMinutes(15), specialist);
             token.setToken(newToken);
             tokenService.saveToken(token);
             SimpleMailMessage mailMessage =
-                   emailService.createEmail(worker.getEmail(), worker.getFirstname(), token.getToken(), worker.getRole());
+                   emailService.createEmail(specialist.getEmail(), specialist.getFirstname(), token.getToken(), specialist.getRole());
             emailService.sendEmail(mailMessage);
             return newToken;
       }
@@ -112,11 +115,11 @@ public class SpecialistServiceImpl extends BaseEntityServiceImpl<Specialist, Lon
 
       @Override
       @Transactional
-      public ProjectResponse editPassword(ChangePasswordDTO changePasswordDTO, Long workerId) {
+      public ProjectResponse editPassword(ChangePasswordDTO changePasswordDTO, Long specialistId) {
             validation.checkPassword(changePasswordDTO.getNewPassword());
             if (!changePasswordDTO.getNewPassword().equals(changePasswordDTO.getConfirmNewPassword()))
                   throw new DuplicatePasswordException("this confirmNewPassword not match with newPassword!");
-            repository.editPassword(workerId, passwordEncoder.encode(changePasswordDTO.getConfirmNewPassword()));
+            repository.editPassword(specialistId, passwordEncoder.encode(changePasswordDTO.getConfirmNewPassword()));
             return new ProjectResponse("200", "CHANGE PASSWORD SUCCESSFULLY");
       }
 
@@ -143,19 +146,19 @@ public class SpecialistServiceImpl extends BaseEntityServiceImpl<Specialist, Lon
             }
             if (dbMainService.isEmpty())
                   throw new MainServicesIsNotExistException("this main service dose not exist!");
-            return jobService.findByMainServiceId(dbMainService.get().getId());
+            return subServicesService.findByMainServiceId(dbMainService.get().getId());
       }
 
       @Override
       @Transactional(readOnly = true)
-      public List<LimitedOrderResponseDTO> showRelatedOrders(Long workerId) {
-            Optional<Specialist> specialist = repository.findById(workerId);
+      public List<LimitedOrderResponseDTO> showRelatedOrders(Long specialistId) {
+            Optional<Specialist> specialist = repository.findById(specialistId);
             if (specialist.get().getSubServicesList().isEmpty())
-                  throw new SpecialistNoAccessException("you do not have a job title!");
+                  throw new SpecialistNoAccessException("you do not have a subServices title!");
             List<LimitedOrderResponseDTO> lorDTOS = new ArrayList<>();
-            specialist.get().getSubServicesList().forEach(job ->
+            specialist.get().getSubServicesList().forEach(subServices ->
                    lorDTOS.addAll(orderService.findAllOrdersBySubServicesNameAndProvince(
-                          job.getName(), specialist.get().getProvince())));
+                          subServices.getName(), specialist.get().getProvince())));
             return lorDTOS;
       }
 
@@ -195,28 +198,28 @@ public class SpecialistServiceImpl extends BaseEntityServiceImpl<Specialist, Lon
 
       @Override
       @Transactional(readOnly = true)
-      public double getSpecialistRate(Long workerId) {
-            validation.checkPositiveNumber(workerId);
-            Optional<Specialist> worker = repository.findById(workerId);
-            if (worker.isEmpty())
-                  throw new SpecialistIsNotExistException("this worker does not exist!");
-            return worker.get().getScore();
+      public double getSpecialistRate(Long specialistId) {
+            validation.checkPositiveNumber(specialistId);
+            Optional<Specialist> specialist = repository.findById(specialistId);
+            if (specialist.isEmpty())
+                  throw new SpecialistIsNotExistException("this specialist does not exist!");
+            return specialist.get().getScore();
       }
 
       @Override
       @Transactional(readOnly = true)
-      public Long getSpecialistCredit(Long workerId) {
-            validation.checkPositiveNumber(workerId);
-            Optional<Specialist> worker = repository.findById(workerId);
-            if (worker.isEmpty())
-                  throw new SpecialistIsNotExistException("this worker does not exist!");
-            return worker.get().getCredit();
+      public Long getSpecialistCredit(Long specialistId) {
+            validation.checkPositiveNumber(specialistId);
+            Optional<Specialist> specialist = repository.findById(specialistId);
+            if (specialist.isEmpty())
+                  throw new SpecialistIsNotExistException("this specialist does not exist!");
+            return specialist.get().getCredit();
       }
 
       @Override
       @Transactional(readOnly = true)
-      public List<OfferResponseDTO> showAllOffersWaiting(Long workerId) {
-            List<Offer> offers = offerService.findOffersBySpecialistIdAndOfferStatus(workerId, OfferStatus.WAITING);
+      public List<OfferResponseDTO> showAllOffersWaiting(Long specialistId) {
+            List<Offer> offers = offerService.findOffersBySpecialistIdAndOfferStatus(specialistId, OfferStatus.WAITING);
             List<OfferResponseDTO> orDTOS = new ArrayList<>();
             offers.forEach(o -> orDTOS.add(offerMapper.convertToDTO(o)));
             return orDTOS;
@@ -224,8 +227,8 @@ public class SpecialistServiceImpl extends BaseEntityServiceImpl<Specialist, Lon
 
       @Override
       @Transactional(readOnly = true)
-      public List<OfferResponseDTO> showAllOffersAccepted(Long workerId) {
-            List<Offer> offers = offerService.findOffersBySpecialistIdAndOfferStatus(workerId, OfferStatus.ACCEPTED);
+      public List<OfferResponseDTO> showAllOffersAccepted(Long specialistId) {
+            List<Offer> offers = offerService.findOffersBySpecialistIdAndOfferStatus(specialistId, OfferStatus.ACCEPTED);
             List<OfferResponseDTO> orDTOS = new ArrayList<>();
             offers.forEach(o -> orDTOS.add(offerMapper.convertToDTO(o)));
             return orDTOS;
@@ -233,8 +236,8 @@ public class SpecialistServiceImpl extends BaseEntityServiceImpl<Specialist, Lon
 
       @Override
       @Transactional(readOnly = true)
-      public List<OfferResponseDTO> showAllOffersRejected(Long workerId) {
-            List<Offer> offers = offerService.findOffersBySpecialistIdAndOfferStatus(workerId, OfferStatus.REJECTED);
+      public List<OfferResponseDTO> showAllOffersRejected(Long specialistId) {
+            List<Offer> offers = offerService.findOffersBySpecialistIdAndOfferStatus(specialistId, OfferStatus.REJECTED);
             List<OfferResponseDTO> orDTOS = new ArrayList<>();
             offers.forEach(o -> orDTOS.add(offerMapper.convertToDTO(o)));
             return orDTOS;
@@ -243,109 +246,103 @@ public class SpecialistServiceImpl extends BaseEntityServiceImpl<Specialist, Lon
       @Override
       @Transactional(readOnly = true)
       public List<Specialist> findAll() {
-            List<Specialist> workerList = repository.findAll();
-            if (workerList.isEmpty())
-                  throw new SpecialistIsNotExistException("there are no workers!");
-            return workerList;
+            List<Specialist> specialistList = repository.findAll();
+            if (specialistList.isEmpty())
+                  throw new SpecialistIsNotExistException("there are no specialists!");
+            return specialistList;
       }
 
       @Override
       public Optional<Specialist> findByUsername(String email) {
-            return Optional.empty();
+            return repository.findByEmail(email);
       }
 
       @Override
       public List<FilterUserResponseDTO> allSpecialist(FilterUserDTO userDTO) {
             List<FilterUserResponseDTO> furDList = new ArrayList<>();
-            List<Specialist> workerList = repository.findAll();
-            if (!workerList.isEmpty())
-                  workerList.forEach(c ->
-                         furDList.add(workerMapper.convertToFilterDTO(c)));
+            List<Specialist> list = repository.findAll();
+            if (!list.isEmpty())
+                  list.forEach(c ->
+                         furDList.add(specialistMapper.convertToFilterDTO(c)));
             return furDList;
       }
 
       @Override
       @Transactional(readOnly = true)
-      public List<FilterUserResponseDTO> specialistFilter(FilterUserDTO workerDTO) {
+      public List<FilterUserResponseDTO> specialistFilter(FilterUserDTO specialistDTO) {
             List<Predicate> predicateList = new ArrayList<>();
             CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-            CriteriaQuery<Specialist> workerCriteriaQuery = criteriaBuilder.createQuery(Specialist.class);
-            Root<Specialist> workerRoot = workerCriteriaQuery.from(Specialist.class);
-            createFilters(workerDTO, predicateList, criteriaBuilder, workerRoot);
+            CriteriaQuery<Specialist> specialistCriteriaQuery = criteriaBuilder.createQuery(Specialist.class);
+            Root<Specialist> specialistRoot = specialistCriteriaQuery.from(Specialist.class);
+            createFilters(specialistDTO, predicateList, criteriaBuilder, specialistRoot);
             Predicate[] predicates = new Predicate[predicateList.size()];
             predicateList.toArray(predicates);
-            workerCriteriaQuery.select(workerRoot).where(predicates);
-            List<Specialist> resultList = entityManager.createQuery(workerCriteriaQuery).getResultList();
+            specialistCriteriaQuery.select(specialistRoot).where(predicates);
+            List<Specialist> resultList = entityManager.createQuery(specialistCriteriaQuery).getResultList();
             List<FilterUserResponseDTO> fuDTOS = new ArrayList<>();
-            resultList.forEach(rl -> fuDTOS.add(workerMapper.convertToFilterDTO(rl)));
+            resultList.forEach(rl -> fuDTOS.add(specialistMapper.convertToFilterDTO(rl)));
             return fuDTOS;
       }
 
-      private void createFilters(FilterUserDTO workerDTO, List<Predicate> predicateList,
-                                 CriteriaBuilder criteriaBuilder, Root<Specialist> workerRoot) {
+      private void createFilters(FilterUserDTO specialistDto, List<Predicate> predicateList,
+                                 CriteriaBuilder criteriaBuilder, Root<Specialist> specialistRoot) {
 
-            if (workerDTO.getFirstname() != null) {
-                  String firstname = "%" + workerDTO.getFirstname() + "%";
-                  predicateList.add(criteriaBuilder.like(workerRoot.get("firstname"), firstname));
+            if (specialistDto.getFirstname() != null) {
+                  String firstname = "%" + specialistDto.getFirstname() + "%";
+                  predicateList.add(criteriaBuilder.like(specialistRoot.get("firstname"), firstname));
             }
-            if (workerDTO.getLastname() != null) {
-                  String lastname = "%" + workerDTO.getLastname() + "%";
-                  predicateList.add(criteriaBuilder.like(workerRoot.get("lastname"), lastname));
+            if (specialistDto.getLastname() != null) {
+                  String lastname = "%" + specialistDto.getLastname() + "%";
+                  predicateList.add(criteriaBuilder.like(specialistRoot.get("lastname"), lastname));
             }
-            if (workerDTO.getUsername() != null) {
-                  String email = "%" + workerDTO.getUsername() + "%";
-                  predicateList.add(criteriaBuilder.like(workerRoot.get("email"), email));
+            if (specialistDto.getUsername() != null) {
+                  String email = "%" + specialistDto.getUsername() + "%";
+                  predicateList.add(criteriaBuilder.like(specialistRoot.get("email"), email));
             }
-
-            if (workerDTO.getIsActive() != null)
-                  if (workerDTO.getIsActive())
-                        predicateList.add(criteriaBuilder.isTrue(workerRoot.get("isActive")));
+            if (specialistDto.getIsActive() != null)
+                  if (specialistDto.getIsActive())
+                        predicateList.add(criteriaBuilder.isTrue(specialistRoot.get("isActive")));
                   else
-                        predicateList.add(criteriaBuilder.isFalse(workerRoot.get("isActive")));
+                        predicateList.add(criteriaBuilder.isFalse(specialistRoot.get("isActive")));
 
-            if (workerDTO.getUserStatus() != null)
-                  predicateList.add(criteriaBuilder.equal(workerRoot.get("status"),
-                         workerDTO.getUserStatus().toString()));
+            if (specialistDto.getUserStatus() != null)
+                  predicateList.add(criteriaBuilder.equal(specialistRoot.get("status"),
+                         specialistDto.getUserStatus().toString()));
 
-            if (workerDTO.getMinCredit() == null && workerDTO.getMaxCredit() != null)
-                  workerDTO.setMinCredit(0L);
-            if (workerDTO.getMinCredit() != null && workerDTO.getMaxCredit() == null)
-                  workerDTO.setMaxCredit(Long.MAX_VALUE);
-            if (workerDTO.getMinCredit() != null && workerDTO.getMaxCredit() != null)
-                  predicateList.add(criteriaBuilder.between(workerRoot.get("credit"),
-                         workerDTO.getMinCredit(), workerDTO.getMaxCredit()));
+            if (specialistDto.getMinCredit() == null && specialistDto.getMaxCredit() != null)
+                  specialistDto.setMinCredit(0L);
+            if (specialistDto.getMinCredit() != null && specialistDto.getMaxCredit() == null)
+                  specialistDto.setMaxCredit(Long.MAX_VALUE);
+            if (specialistDto.getMinCredit() != null && specialistDto.getMaxCredit() != null)
+                  predicateList.add(criteriaBuilder.between(specialistRoot.get("credit"),
+                         specialistDto.getMinCredit(), specialistDto.getMaxCredit()));
 
-            if (workerDTO.getMinScore() == null && workerDTO.getMaxScore() != null)
-                  workerDTO.setMinScore(0.0);
-            if (workerDTO.getMinScore() != null && workerDTO.getMaxScore() == null)
-                  workerDTO.setMaxScore(5.0);
-            if (workerDTO.getMinScore() != null && workerDTO.getMaxScore() != null)
-                  predicateList.add(criteriaBuilder.between(workerRoot.get("score"),
-                         workerDTO.getMinScore(), workerDTO.getMaxScore()));
+            if (specialistDto.getMinScore() == null && specialistDto.getMaxScore() != null)
+                  specialistDto.setMinScore(0.0);
+            if (specialistDto.getMinScore() != null && specialistDto.getMaxScore() == null)
+                  specialistDto.setMaxScore(5.0);
+            if (specialistDto.getMinScore() != null && specialistDto.getMaxScore() != null)
+                  predicateList.add(criteriaBuilder.between(specialistRoot.get("score"),
+                         specialistDto.getMinScore(), specialistDto.getMaxScore()));
 
-            if (workerDTO.getMinUserCreationAt() == null && workerDTO.getMaxUserCreationAt() != null)
-                  workerDTO.setMinUserCreationAt(LocalDateTime.now().minusYears(2));
-            if (workerDTO.getMinUserCreationAt() != null && workerDTO.getMaxUserCreationAt() == null)
-                  workerDTO.setMaxUserCreationAt(LocalDateTime.now());
-            if (workerDTO.getMinUserCreationAt() != null && workerDTO.getMaxUserCreationAt() != null)
-                  predicateList.add(criteriaBuilder.between(workerRoot.get("registrationTime"),
-                         workerDTO.getMinUserCreationAt(), workerDTO.getMaxUserCreationAt()));
+            if (specialistDto.getMinUserCreationAt() == null && specialistDto.getMaxUserCreationAt() != null)
+                  specialistDto.setMinUserCreationAt(LocalDateTime.now().minusYears(2));
+            if (specialistDto.getMinUserCreationAt() != null && specialistDto.getMaxUserCreationAt() == null)
+                  specialistDto.setMaxUserCreationAt(LocalDateTime.now());
+            if (specialistDto.getMinUserCreationAt() != null && specialistDto.getMaxUserCreationAt() != null)
+                  predicateList.add(criteriaBuilder.between(specialistRoot.get("registrationTime"),
+                         specialistDto.getMinUserCreationAt(), specialistDto.getMaxUserCreationAt()));
 
-            if (workerDTO.getMinNumberOfOperation() == null && workerDTO.getMaxNumberOfOperation() != null)
-                  workerDTO.setMinNumberOfOperation(0);
-            if (workerDTO.getMinNumberOfOperation() != null && workerDTO.getMaxNumberOfOperation() == null)
-                  workerDTO.setMaxNumberOfOperation(Integer.MAX_VALUE);
-            if (workerDTO.getMinNumberOfOperation() != null && workerDTO.getMaxNumberOfOperation() != null)
-                  predicateList.add(criteriaBuilder.between(workerRoot.get("numberOfOperation"),
-                         workerDTO.getMinNumberOfOperation(), workerDTO.getMaxNumberOfOperation()));
+            if (specialistDto.getMinNumberOfOperation() == null && specialistDto.getMaxNumberOfOperation() != null)
+                  specialistDto.setMinNumberOfOperation(0);
+            if (specialistDto.getMinNumberOfOperation() != null && specialistDto.getMaxNumberOfOperation() == null)
+                  specialistDto.setMaxNumberOfOperation(Integer.MAX_VALUE);
 
-            if (workerDTO.getMinNumberOfDoneOperation() == null && workerDTO.getMaxNumberOfDoneOperation() != null)
-                  workerDTO.setMinNumberOfDoneOperation(0);
-            if (workerDTO.getMinNumberOfDoneOperation() != null && workerDTO.getMaxNumberOfDoneOperation() == null)
-                  workerDTO.setMaxNumberOfDoneOperation(Integer.MAX_VALUE);
-            if (workerDTO.getMinNumberOfDoneOperation() != null && workerDTO.getMaxNumberOfDoneOperation() != null)
-                  predicateList.add(criteriaBuilder.between(workerRoot.get("rateCounter"),
-                         workerDTO.getMinNumberOfDoneOperation(), workerDTO.getMaxNumberOfDoneOperation()));
+            if (specialistDto.getMinNumberOfDoneOperation() == null && specialistDto.getMaxNumberOfDoneOperation() != null)
+                  specialistDto.setMinNumberOfDoneOperation(0);
+            if (specialistDto.getMinNumberOfDoneOperation() != null && specialistDto.getMaxNumberOfDoneOperation() == null)
+                  specialistDto.setMaxNumberOfDoneOperation(Integer.MAX_VALUE);
+
 
       }
 
