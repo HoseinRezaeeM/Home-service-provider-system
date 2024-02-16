@@ -2,7 +2,7 @@ package com.example.homeserviceprovider.exception.global;
 
 
 
-import com.example.homeserviceprovider.domain.user.Specialist;
+
 import com.example.homeserviceprovider.dto.response.ProjectResponse;
 import com.example.homeserviceprovider.exception.*;
 import org.springframework.http.ResponseEntity;
