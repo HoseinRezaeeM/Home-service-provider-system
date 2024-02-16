@@ -2,6 +2,8 @@ package com.example.homeserviceprovider.service;
 
 import com.example.homeserviceprovider.base.service.BaseEntityService;
 import com.example.homeserviceprovider.domain.service.SubServices;
+import com.example.homeserviceprovider.dto.request.SubServicesRequestDTO;
+import com.example.homeserviceprovider.dto.response.SubServicesResponseDTO;
 
 
 import java.util.List;
@@ -25,7 +27,7 @@ public interface SubServicesService extends BaseEntityService<SubServices,Long> 
 
     void deleteSubServicesByName(String subServicesName);
 
-    List<SubServices> findByMainServiceName(String mainServiceName);
+    List<SubServicesResponseDTO> findByMainServiceName(String mainServiceName);
 
-    List<SubServices> findByMainServiceId(Long mainServiceId);
+    List<SubServicesResponseDTO> findByMainServiceId(Long mainServiceId);
 }
