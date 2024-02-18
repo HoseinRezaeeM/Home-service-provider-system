@@ -118,14 +118,14 @@ public class CustomerServiceImpl extends BaseEntityServiceImpl<Customer, Long, C
             validation.checkPassword(dto.getPassword());
             validation.checkText(dto.getFirstname());
             validation.checkText(dto.getLastname());
-            Customer client = customerMapper.convertToNewClient(dto);
-            repository.save(client);
+            Customer customer = customerMapper.convertToNewClient(dto);
+            repository.save(customer);
             String newToken = UUID.randomUUID().toString();
-            Token token = new Token(LocalDateTime.now(), LocalDateTime.now().plusMinutes(15), client);
+            Token token = new Token(LocalDateTime.now(), LocalDateTime.now().plusMinutes(15), customer);
             token.setToken(newToken);
             tokenService.saveToken(token);
             SimpleMailMessage mailMessage =
-                   emailService.createEmail(client.getEmail(), client.getFirstname(), token.getToken(), client.getRole());
+                   emailService.createEmail(customer.getEmail(), customer.getFirstname(), token.getToken(), customer.getRole());
             emailService.sendEmail(mailMessage);
             return newToken;
       }
@@ -135,8 +135,8 @@ public class CustomerServiceImpl extends BaseEntityServiceImpl<Customer, Long, C
             validation.checkPassword(changePasswordDTO.getNewPassword());
             if (!changePasswordDTO.getNewPassword().equals(changePasswordDTO.getConfirmNewPassword()))
                   throw new DuplicatePasswordException("this confirmNewPassword not match with newPassword!");
-            Optional<Customer> client = repository.findById(clientId);
-            client.get().setPassword(passwordEncoder.encode(changePasswordDTO.getConfirmNewPassword()));
+            Optional<Customer> customer = repository.findById(clientId);
+            customer.get().setPassword(passwordEncoder.encode(changePasswordDTO.getConfirmNewPassword()));
             return new ProjectResponse("200", "CHANGE PASSWORD SUCCESSFULLY");
       }
 
@@ -162,20 +162,20 @@ public class CustomerServiceImpl extends BaseEntityServiceImpl<Customer, Long, C
             Customer dbClient = repository.findById(clientId).get();
             if (dbClient.getCustomerStatus().equals(NEW))
                   throw new CustomerStatusException("you can't sumbit order," +
-                                                  "because your account is NEW," +
-                                                  " please added Address and update your account.");
-            validation.checkBlank(soDTO.getAddressTitle());
+                                                    "because your account is NEW," +
+                                                    " please added Address and update your account.");
+            validation.checkBlank(soDTO.getAddressProvince());
             if ((dbClient.getAddressList().stream().filter(a ->
-                   a.getProvince().equals(soDTO.getAddressTitle()))).findFirst().isEmpty())
+                   a.getProvince().equals(soDTO.getAddressProvince()))).findFirst().isEmpty())
                   throw new AddressFormatException("you did not added such an address!");
             if (soDTO.getWorkStartDate().isBefore(LocalDateTime.now()))
                   throw new TimeException("passed this date!");
             if (soDTO.getWorkEndDate().isBefore(soDTO.getWorkStartDate()))
                   throw new TimeException("Time does not go back!");
-            validation.checkBlank(soDTO.getJobName());
+            validation.checkBlank(soDTO.getSubServiceName());
             validation.checkPositiveNumber(soDTO.getProposedPrice());
             validation.checkBlank(soDTO.getDescription());
-            Optional<SubServices> subServices = subServicesService.findByName(soDTO.getJobName());
+            Optional<SubServices> subServices = subServicesService.findByName(soDTO.getSubServiceName());
             if (subServices.isEmpty())
                   throw new SubServicesIsNotExistException("this subServices does not exist!");
             if (subServices.get().getBasePrice() > soDTO.getProposedPrice())
@@ -225,14 +225,14 @@ public class CustomerServiceImpl extends BaseEntityServiceImpl<Customer, Long, C
       public ProjectResponse changeOrderStatusToPaidByOnlinePayment(CustomerIdOrderIdDTO dto) {
             validation.checkPositiveNumber(dto.getCustomerId());
             validation.checkPositiveNumber(dto.getOrderId());
-            Optional<Customer> dbClient = repository.findById(dto.getCustomerId());
-            if (dbClient.isEmpty())
+            Optional<Customer> customer = repository.findById(dto.getCustomerId());
+            if (customer.isEmpty())
                   throw new CustomerNotExistException("not found user");
             Optional<Order> order = orderService.findById(dto.getOrderId());
             if (order.isEmpty())
                   throw new OrderIsNotExistException("ont found order");
             accounting(order.get());
-            repository.save(dbClient.get());
+            repository.save(customer.get());
             return new ProjectResponse("200", "payment was successfully");
       }
 
@@ -281,7 +281,7 @@ public class CustomerServiceImpl extends BaseEntityServiceImpl<Customer, Long, C
       public ModelAndView increaseAccountBalance(Long price, Long customerId, Model model) {
             validation.checkPositiveNumber(price);
             BalancePageDTO balancePageDTO = new BalancePageDTO();
-            balancePageDTO.setCustomertId(customerId);
+            balancePageDTO.setCustomerId(customerId);
             balancePageDTO.setPrice(price);
             setupCaptcha(balancePageDTO);
             model.addAttribute("bdto", balancePageDTO);
@@ -398,8 +398,8 @@ public class CustomerServiceImpl extends BaseEntityServiceImpl<Customer, Long, C
                          ("the status of this order is not yet \"WAITING FOR EXPERT TO COME\"!");
             order.get().getOfferList().forEach(o -> {
                   if (o.getOfferStatus().equals(ACCEPTED))
-                        if (!o.getExecutionTime().isBefore(LocalDateTime.now()))
-                              throw new TimeException("the worker has not arrived at your place yet!");
+                        if (o.getExecutionTime().isBefore(LocalDateTime.now()))
+                              throw new TimeException("the specialist has not arrived at your place yet!");
             });
             order.get().setOrderStatus(STARTED);
             orderService.save(order.get());
@@ -480,27 +480,27 @@ public class CustomerServiceImpl extends BaseEntityServiceImpl<Customer, Long, C
       }
 
       private void createFilters(FilterUserDTO dto, List<Predicate> predicateList,
-                                 CriteriaBuilder criteriaBuilder, Root<Customer> clientRoot) {
+                                 CriteriaBuilder criteriaBuilder, Root<Customer> customerRoot) {
             if (dto.getFirstname() != null) {
                   String firstname = "%" + dto.getFirstname() + "%";
-                  predicateList.add(criteriaBuilder.like(clientRoot.get("firstname"), firstname));
+                  predicateList.add(criteriaBuilder.like(customerRoot.get("firstname"), firstname));
             }
             if (dto.getLastname() != null) {
                   String lastname = "%" + dto.getLastname() + "%";
-                  predicateList.add(criteriaBuilder.like(clientRoot.get("lastname"), lastname));
+                  predicateList.add(criteriaBuilder.like(customerRoot.get("lastname"), lastname));
             }
             if (dto.getUsername() != null) {
                   String email = "%" + dto.getUsername() + "%";
-                  predicateList.add(criteriaBuilder.like(clientRoot.get("email"), email));
+                  predicateList.add(criteriaBuilder.like(customerRoot.get("email"), email));
             }
             if (dto.getIsActive() != null)
                   if (dto.getIsActive())
-                        predicateList.add(criteriaBuilder.isTrue(clientRoot.get("isActive")));
+                        predicateList.add(criteriaBuilder.isTrue(customerRoot.get("isActive")));
                   else
-                        predicateList.add(criteriaBuilder.isFalse(clientRoot.get("isActive")));
+                        predicateList.add(criteriaBuilder.isFalse(customerRoot.get("isActive")));
 
             if (dto.getUserStatus() != null)
-                  predicateList.add(criteriaBuilder.equal(clientRoot.get("clientStatus"),
+                  predicateList.add(criteriaBuilder.equal(customerRoot.get("customerStatus"),
                          dto.getUserStatus()));
 
             if (dto.getMinCredit() == null && dto.getMaxCredit() != null)
@@ -508,32 +508,24 @@ public class CustomerServiceImpl extends BaseEntityServiceImpl<Customer, Long, C
             if (dto.getMinCredit() != null && dto.getMaxCredit() == null)
                   dto.setMaxCredit(Long.MAX_VALUE);
             if (dto.getMinCredit() != null && dto.getMaxCredit() != null)
-                  predicateList.add(criteriaBuilder.between(clientRoot.get("credit"),
+                  predicateList.add(criteriaBuilder.between(customerRoot.get("credit"),
                          dto.getMinCredit(), dto.getMaxCredit()));
-
             if (dto.getMinUserCreationAt() == null && dto.getMaxUserCreationAt() != null)
                   dto.setMinUserCreationAt(LocalDateTime.now().minusYears(2));
             if (dto.getMinUserCreationAt() != null && dto.getMaxUserCreationAt() == null)
                   dto.setMaxUserCreationAt(LocalDateTime.now());
             if (dto.getMinUserCreationAt() != null && dto.getMaxUserCreationAt() != null)
-                  predicateList.add(criteriaBuilder.between(clientRoot.get("registrationTime"),
+                  predicateList.add(criteriaBuilder.between(customerRoot.get("registrationTime"),
                          dto.getMinUserCreationAt(), dto.getMaxUserCreationAt()));
-
             if (dto.getMinNumberOfOperation() == null && dto.getMaxNumberOfOperation() != null)
                   dto.setMinNumberOfOperation(0);
             if (dto.getMinNumberOfOperation() != null && dto.getMaxNumberOfOperation() == null)
                   dto.setMaxNumberOfOperation(Integer.MAX_VALUE);
-            if (dto.getMinNumberOfOperation() != null && dto.getMaxNumberOfOperation() != null)
-                  predicateList.add(criteriaBuilder.between(clientRoot.get("numberOfOperation"),
-                         dto.getMinNumberOfOperation(), dto.getMaxNumberOfOperation()));
-
             if (dto.getMinNumberOfDoneOperation() == null && dto.getMaxNumberOfDoneOperation() != null)
                   dto.setMinNumberOfDoneOperation(0);
             if (dto.getMinNumberOfDoneOperation() != null && dto.getMaxNumberOfDoneOperation() == null)
                   dto.setMaxNumberOfDoneOperation(Integer.MAX_VALUE);
-            if (dto.getMinNumberOfDoneOperation() != null && dto.getMaxNumberOfDoneOperation() != null)
-                  predicateList.add(criteriaBuilder.between(clientRoot.get("paidCounter"),
-                         dto.getMinNumberOfDoneOperation(), dto.getMaxNumberOfDoneOperation()));
+
 
       }
 }
