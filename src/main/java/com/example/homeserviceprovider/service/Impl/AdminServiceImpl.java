@@ -140,13 +140,13 @@ public class AdminServiceImpl extends BaseEntityServiceImpl<Admin, Long, AdminRe
       }
 
       @Override
-      public ProjectResponse addSpecialistToSubServices(Long jobId, Long workerId) {
-            validation.checkPositiveNumber(jobId);
-            validation.checkPositiveNumber(workerId);
-            Optional<SubServices> job = subServicesService.findById(jobId);
+      public ProjectResponse addSpecialistToSubServices(Long subServicesId, Long specialistId) {
+            validation.checkPositiveNumber(subServicesId);
+            validation.checkPositiveNumber(specialistId);
+            Optional<SubServices> job = subServicesService.findById(subServicesId);
             if (job.isEmpty())
                   throw new SubServicesIsNotExistException("this job dose not exist!");
-            Optional<Specialist> specialist = specialistService.findById(workerId);
+            Optional<Specialist> specialist = specialistService.findById(specialistId);
             if (specialist.isEmpty())
                   throw new SpecialistIsNotExistException("this specialist does not exist!");
             if (!(specialist.get().getStatus().equals(SpecialistStatus.CONFIRMED)))
@@ -157,13 +157,13 @@ public class AdminServiceImpl extends BaseEntityServiceImpl<Admin, Long, AdminRe
       }
 
       @Override
-      public ProjectResponse deleteSubServicesFromSpecialist(Long jobId, Long workerId) {
-            validation.checkPositiveNumber(jobId);
-            validation.checkPositiveNumber(workerId);
-            Optional<SubServices> service = subServicesService.findById(jobId);
+      public ProjectResponse deleteSubServicesFromSpecialist(Long subServicesId, Long specialistId) {
+            validation.checkPositiveNumber(subServicesId);
+            validation.checkPositiveNumber(specialistId);
+            Optional<SubServices> service = subServicesService.findById(subServicesId);
             if (service.isEmpty())
                   throw new SubServicesIsNotExistException("this service dose not exist!");
-            Optional<Specialist> specialist = specialistService.findById(workerId);
+            Optional<Specialist> specialist = specialistService.findById(specialistId);
             if (specialist.isEmpty())
                   throw new SpecialistIsNotExistException("this specialist does not exist!");
             specialist.get().deleteSubServices(service.get());
@@ -231,9 +231,9 @@ public class AdminServiceImpl extends BaseEntityServiceImpl<Admin, Long, AdminRe
       }
 
       @Override
-      public ProjectResponse confirmSpecialist(Long workerId) {
-            validation.checkPositiveNumber(workerId);
-            Optional<Specialist> specialist = specialistService.findById(workerId);
+      public ProjectResponse confirmSpecialist(Long specialistId) {
+            validation.checkPositiveNumber(specialistId);
+            Optional<Specialist> specialist = specialistService.findById(specialistId);
             if (specialist.isEmpty())
                   throw new SpecialistIsNotExistException("this specialist does not exist!");
             if (specialist.get().getIsActive()) {
