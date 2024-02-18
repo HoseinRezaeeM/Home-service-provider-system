@@ -124,7 +124,7 @@ public class AdminServiceImpl extends BaseEntityServiceImpl<Admin, Long, AdminRe
                   throw new MainServicesIsNotExistException("this main service dose not exist!");
             if (subServicesService.findByName(subServicesName).isPresent())
                   throw new SubServicesIsExistException("this job already exist!");
-            SubServices newSubServices = subServicesMapper.convertToJob(subServicesRequestDTO);
+            SubServices newSubServices = subServicesMapper.convertToSubService(subServicesRequestDTO);
             newSubServices.setMainServices(mainService.get());
             subServicesService.save(newSubServices);
             return new ProjectResponse("200", "ADDED SUCCESSFUL");
