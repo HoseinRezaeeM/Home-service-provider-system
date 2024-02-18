@@ -37,11 +37,6 @@ public class SecurityConfig {
                                 .requestMatchers("/specialist/**").hasAuthority(SPECIALIST.name())
                                 .anyRequest().authenticated()
 
-//                .logout()
-//                .clearAuthentication(true)
-//                .invalidateHttpSession(true)
-//                .permitAll();
-
                 )
                 .authenticationProvider(new CustomAuthProvider(
                         (CustomerUserDetailsService) userDetailsService(), passwordEncoder()))
