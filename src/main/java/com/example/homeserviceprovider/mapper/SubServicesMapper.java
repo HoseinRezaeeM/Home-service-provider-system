@@ -21,7 +21,7 @@ public class SubServicesMapper {
         );
     }
 
-    public SubServices convertToJob(SubServicesRequestDTO jrDTO) {
+    public SubServices convertToSubService(SubServicesRequestDTO jrDTO) {
         return new SubServices(
                 jrDTO.getName(),
                 jrDTO.getBasePrice(),
