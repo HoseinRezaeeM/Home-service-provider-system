@@ -31,7 +31,7 @@ public class OrderMapper {
                 soDTO.getProposedPrice(),
                 soDTO.getDescription(),customer, subServices,
                 customer.getAddressList().stream().filter(a ->
-                        a.getProvince().equals(soDTO.getAddressTitle())).findFirst().get()
+                        a.getProvince().equals(soDTO.getAddressProvince())).findFirst().get()
 
 
         );
