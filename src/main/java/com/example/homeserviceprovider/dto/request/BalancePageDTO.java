@@ -15,6 +15,6 @@ public class BalancePageDTO {
     String captcha;
     String hidden;
     String image;
-    Long customertId;
+    Long customerId;
 
 }
