@@ -130,10 +130,10 @@ public class OrderServiceImpl extends BaseEntityServiceImpl<Order, Long, OrderRe
             if (orderDTO.getOrderStatus() != null) {
                   predicateList.add(criteriaBuilder.equal(orderRoot.get("orderStatus"),orderDTO.getOrderStatus()));
             }
-            if (orderDTO.getJobId() != null) {
-                  validation.checkPositiveNumber(orderDTO.getJobId());
-                  predicateList.add(criteriaBuilder.equal(orderRoot.get("job"),
-                         subServicesService.findById(orderDTO.getJobId()).get()));
+            if (orderDTO.getSubServiceId() != null) {
+                  validation.checkPositiveNumber(orderDTO.getSubServiceId());
+                  predicateList.add(criteriaBuilder.equal(orderRoot.get("subServices"),
+                         subServicesService.findById(orderDTO.getSubServiceId()).get()));
             }
             if (orderDTO.getMinProposedPrice() == null && orderDTO.getMaxProposedPrice() != null)
                   orderDTO.setMinProposedPrice(0L);
@@ -142,7 +142,6 @@ public class OrderServiceImpl extends BaseEntityServiceImpl<Order, Long, OrderRe
             if (orderDTO.getMinProposedPrice() != null && orderDTO.getMaxProposedPrice() != null)
                   predicateList.add(criteriaBuilder.between(orderRoot.get("proposedPrice"),
                          orderDTO.getMinProposedPrice(), orderDTO.getMaxProposedPrice()));
-
             if (orderDTO.getMinOrderRegistrationDate() == null && orderDTO.getMaxOrderRegistrationDate() != null)
                   orderDTO.setMinOrderRegistrationDate(LocalDateTime.now().minusYears(5));
             if (orderDTO.getMinOrderRegistrationDate() != null && orderDTO.getMaxOrderRegistrationDate() == null)
@@ -156,25 +155,25 @@ public class OrderServiceImpl extends BaseEntityServiceImpl<Order, Long, OrderRe
       @Override
       public List<FilterOrderResponseDTO> ordersFilter(FilterOrderDTO dto) {
             List<FilterOrderResponseDTO> forDTOS = new ArrayList<>();
-            List<Long> dbJobsId = new ArrayList<>();
+            List<Long> specialistId = new ArrayList<>();
             if (dto.getMainServiceId() != null) {
                   Optional<MainServices> dbMainService = mainServiceService.findById(dto.getMainServiceId());
                   if (dbMainService.isEmpty()) return forDTOS;
                   else {
-                        dbMainService.get().getSubServicesList().forEach(j -> dbJobsId.add(j.getId()));
-                        if (dto.getJobId() != null)
-                              if (!dbJobsId.contains(dto.getJobId())) return forDTOS;
+                        dbMainService.get().getSubServicesList().forEach(j -> specialistId.add(j.getId()));
+                        if (dto.getSubServiceId() != null)
+                              if (!specialistId.contains(dto.getSubServiceId())) return forDTOS;
                   }
-            } else if (dto.getJobId() != null)
-                  dbJobsId.add(dto.getJobId());
+            } else if (dto.getSubServiceId() != null)
+                  specialistId.add(dto.getSubServiceId());
             List<Predicate> predicateList = new ArrayList<>();
             CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
             CriteriaQuery<Order> orderCriteriaQuery = criteriaBuilder.createQuery(Order.class);
             Root<Order> orderRoot = orderCriteriaQuery.from(Order.class);
             List<Order> resultList = new ArrayList<>();
-            if (dbJobsId.isEmpty()) dbJobsId.add(null);
-            dbJobsId.forEach(ji -> {
-                  dto.setJobId(ji);
+            if (specialistId.isEmpty()) specialistId.add(null);
+            specialistId.forEach(ji -> {
+                  dto.setSubServiceId(ji);
                   searchFilters(dto, predicateList, resultList, orderCriteriaQuery, criteriaBuilder, orderRoot);
             });
             if (!resultList.isEmpty()) resultList.forEach(rl -> forDTOS.add(orderMapper.convertToFilterDTO(rl)));
