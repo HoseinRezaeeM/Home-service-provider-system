@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
 public class FilterOrderDTO {
 
     Long mainServiceId;
-    Long jobId;
+    Long subServiceId;
     String description;
     OrderStatus orderStatus;
 
