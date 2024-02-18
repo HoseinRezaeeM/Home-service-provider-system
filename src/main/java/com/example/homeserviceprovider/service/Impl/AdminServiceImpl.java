@@ -223,27 +223,27 @@ public class AdminServiceImpl extends BaseEntityServiceImpl<Admin, Long, AdminRe
       @Override
       @Transactional(readOnly = true)
       public List<SpecialistResponseDTO> findAllSpecialist() {
-            List<Specialist> workers = specialistService.findAll();
+            List<Specialist> specialists = specialistService.findAll();
             List<SpecialistResponseDTO> wDTOS = new ArrayList<>();
-            if (!workers.isEmpty())
-                  workers.forEach(w -> wDTOS.add(specialistMapper.convertToDTO(w)));
+            if (!specialists.isEmpty())
+                  specialists.forEach(w -> wDTOS.add(specialistMapper.convertToDTO(w)));
             return wDTOS;
       }
 
       @Override
       public ProjectResponse confirmSpecialist(Long workerId) {
             validation.checkPositiveNumber(workerId);
-            Optional<Specialist> worker = specialistService.findById(workerId);
-            if (worker.isEmpty())
-                  throw new SpecialistIsNotExistException("this worker does not exist!");
-            if (worker.get().getIsActive()) {
-                  if (worker.get().getStatus().equals(SpecialistStatus.CONFIRMED))
-                        throw new SpecialistIsHoldsExistException("this worker is currently certified!");
-                  worker.get().setStatus(SpecialistStatus.CONFIRMED);
+            Optional<Specialist> specialist = specialistService.findById(workerId);
+            if (specialist.isEmpty())
+                  throw new SpecialistIsNotExistException("this specialist does not exist!");
+            if (specialist.get().getIsActive()) {
+                  if (specialist.get().getStatus().equals(SpecialistStatus.CONFIRMED))
+                        throw new SpecialistIsHoldsExistException("this specialist is currently certified!");
+                  specialist.get().setStatus(SpecialistStatus.CONFIRMED);
             } else {
-                  worker.get().setIsActive(true);
+                  specialist.get().setIsActive(true);
             }
-            specialistService.save(worker.get());
+            specialistService.save(specialist.get());
             return new ProjectResponse("200", "UPDATED SUCCESSFUL");
       }
 
@@ -257,9 +257,9 @@ public class AdminServiceImpl extends BaseEntityServiceImpl<Admin, Long, AdminRe
       }
 
       @Override
-      public ProjectResponse deActiveSpecialist(Long workerId) {
-            validation.checkPositiveNumber(workerId);
-            Optional<Specialist> specialist = specialistService.findById(workerId);
+      public ProjectResponse deActiveSpecialist(Long specialistId) {
+            validation.checkPositiveNumber(specialistId);
+            Optional<Specialist> specialist = specialistService.findById(specialistId);
             if (specialist.isEmpty())
                   throw new SpecialistIsNotExistException("this specialist does not exist!");
             if (!specialist.get().getIsActive())
