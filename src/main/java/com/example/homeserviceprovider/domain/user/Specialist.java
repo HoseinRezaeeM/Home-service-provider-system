@@ -23,6 +23,7 @@ public class Specialist extends Users {
       byte[] image;
       double score;
       Long credit;
+
       @Enumerated(value = EnumType.STRING)
       SpecialistStatus status;
       @ManyToMany(mappedBy = "specialistList", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
@@ -30,7 +31,9 @@ public class Specialist extends Users {
       @OneToMany(mappedBy = "specialist")
       List<Offer> offerList;
       String province;
-
+      int paidCounter;
+      int numberOfOperation;
+      int rateCounter;
       public Specialist(String firstname, String lastname, String email, String password, String province,
                         byte[] image) {
             super(firstname, lastname, email, password, Role.SPECIALIST);
@@ -39,6 +42,7 @@ public class Specialist extends Users {
             this.image = image;
             this.credit = 0L;
             this.province = province;
+            this.rateCounter = 0;
       }
 
 
