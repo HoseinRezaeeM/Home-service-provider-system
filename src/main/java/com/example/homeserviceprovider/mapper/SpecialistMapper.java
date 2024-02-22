@@ -14,47 +14,52 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class SpecialistMapper {
 
-    private final PasswordEncoder passwordEncoder;
+      private final PasswordEncoder passwordEncoder;
 
-    public SpecialistResponseDTO convertToDTO(Specialist specialist) {
-        return new SpecialistResponseDTO(
-                specialist.getId(),
-                specialist.getFirstname(),
-                specialist.getLastname(),
-                specialist.getEmail(),
-                specialist.getIsActive(),
-                specialist.getStatus(),
-                specialist.getScore(),
-                specialist.getCredit(),
-                specialist.getRegistrationTime()
-        );
-    }
+      public SpecialistResponseDTO convertToDTO(Specialist specialist) {
+            return new SpecialistResponseDTO(
+                   specialist.getId(),
+                   specialist.getFirstname(),
+                   specialist.getLastname(),
+                   specialist.getEmail(),
+                   specialist.getIsActive(),
+                   specialist.getStatus(),
+                   specialist.getScore(),
+                   specialist.getCredit(),
+                   specialist.getNumberOfOperation(),
+                   specialist.getPaidCounter(),
+                   specialist.getRegistrationTime()
+            );
+      }
 
-    public Specialist convertToNewSpecialist(SpecialistRegistrationDTO specialistRegistrationDTO) throws IOException {
-        return new Specialist(
-                specialistRegistrationDTO.getFirstname(),
-                specialistRegistrationDTO.getLastname(),
-                specialistRegistrationDTO.getEmail(),
-                passwordEncoder.encode(specialistRegistrationDTO.getPassword()),
-                specialistRegistrationDTO.getProvince(),
-                specialistRegistrationDTO.getFile().getBytes()
-        );
-    }
+      public Specialist convertToNewSpecialist(SpecialistRegistrationDTO specialistRegistrationDTO) throws IOException {
+            return new Specialist(
+                   specialistRegistrationDTO.getFirstname(),
+                   specialistRegistrationDTO.getLastname(),
+                   specialistRegistrationDTO.getEmail(),
+                   passwordEncoder.encode(specialistRegistrationDTO.getPassword()),
+                   specialistRegistrationDTO.getProvince(),
+                   specialistRegistrationDTO.getFile().getBytes()
+            );
+      }
 
-    public FilterUserResponseDTO convertToFilterDTO(Specialist specialist) {
-        return new FilterUserResponseDTO(
-                specialist.getRegistrationTime(),
-                specialist.getRole().name(),
-                specialist.getStatus().name(),
-                specialist.getIsActive(),
-                specialist.getId(),
-                specialist.getFirstname(),
-                specialist.getLastname(),
-                specialist.getEmail(),
-                specialist.getEmail(),
-                specialist.getCredit(),
-                specialist.getScore()
+      public FilterUserResponseDTO convertToFilterDTO(Specialist specialist) {
+            return new FilterUserResponseDTO(
+                   specialist.getRegistrationTime(),
+                   specialist.getRole().name(),
+                   specialist.getStatus().name(),
+                   specialist.getIsActive(),
+                   specialist.getId(),
+                   specialist.getFirstname(),
+                   specialist.getLastname(),
+                   specialist.getEmail(),
+                   specialist.getEmail(),
+                   specialist.getCredit(),
+                   specialist.getScore(),
+                   specialist.getNumberOfOperation(),
+                   specialist.getRateCounter()
 
-        );
-    }
+
+            );
+      }
 }
