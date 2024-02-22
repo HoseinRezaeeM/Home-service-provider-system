@@ -31,10 +31,16 @@ public class Customer extends Users {
       @Enumerated(value = EnumType.STRING)
       CustomerStatus customerStatus;
 
+      int paidCounter;
+
+      int numberOfOperation;
+
       public Customer(String firstname, String lastname, String email,
                       String password, Role role, List<Address> addressList, List<Order> orderList) {
             super(firstname, lastname, email, password, Role.CUSTOMER);
             this.credit = 0L;
+            this.paidCounter = 0;
+            this.numberOfOperation = 0;
             this.addressList = addressList;
             this.orderList = orderList;
       }
@@ -43,6 +49,8 @@ public class Customer extends Users {
             super(firstname, lastname, email, password, Role.CUSTOMER);
             this.credit = 0L;
             this.customerStatus=CustomerStatus.NEW;
+            this.paidCounter = 0;
+            this.numberOfOperation = 0;
       }
 
 
