@@ -96,7 +96,7 @@ public class SpecialistServiceImpl extends BaseEntityServiceImpl<Specialist, Lon
             validation.checkPassword(specialistRegistrationDTO.getPassword());
             validation.checkText(specialistRegistrationDTO.getFirstname());
             validation.checkText(specialistRegistrationDTO.getLastname());
-            validation.checkImage(specialistRegistrationDTO.getFile());
+          //  validation.checkImage(specialistRegistrationDTO.getFile());
             Specialist specialist = specialistMapper.convertToNewSpecialist(specialistRegistrationDTO);
             repository.save(specialist);
             SaveImageToFile.saveImageToFile(specialist.getImage(),
@@ -192,6 +192,7 @@ public class SpecialistServiceImpl extends BaseEntityServiceImpl<Specialist, Lon
             offerService.save(offer);
             if (orderStatus.equals(OrderStatus.WAITING_FOR_SPECIALIST_SUGGESTION))
                   order.get().setOrderStatus(OrderStatus.WAITING_FOR_SPECIALIST_SELECTION);
+            specialist.get().setNumberOfOperation(specialist.get().getNumberOfOperation() + 1);
             orderService.save(order.get());
             return new ProjectResponse("200", "ADDED OFFER SUCCESSFUL");
       }
@@ -337,11 +338,17 @@ public class SpecialistServiceImpl extends BaseEntityServiceImpl<Specialist, Lon
                   specialistDto.setMinNumberOfOperation(0);
             if (specialistDto.getMinNumberOfOperation() != null && specialistDto.getMaxNumberOfOperation() == null)
                   specialistDto.setMaxNumberOfOperation(Integer.MAX_VALUE);
+            if (specialistDto.getMinNumberOfOperation() != null && specialistDto.getMaxNumberOfOperation() != null)
+                  predicateList.add(criteriaBuilder.between(specialistRoot.get("numberOfOperation"),
+                         specialistDto.getMinNumberOfOperation(), specialistDto.getMaxNumberOfOperation()));
 
             if (specialistDto.getMinNumberOfDoneOperation() == null && specialistDto.getMaxNumberOfDoneOperation() != null)
                   specialistDto.setMinNumberOfDoneOperation(0);
             if (specialistDto.getMinNumberOfDoneOperation() != null && specialistDto.getMaxNumberOfDoneOperation() == null)
                   specialistDto.setMaxNumberOfDoneOperation(Integer.MAX_VALUE);
+            if (specialistDto.getMinNumberOfDoneOperation() != null && specialistDto.getMaxNumberOfDoneOperation() != null)
+                  predicateList.add(criteriaBuilder.between(specialistRoot.get("rateCounter"),
+                         specialistDto.getMinNumberOfDoneOperation(), specialistDto.getMaxNumberOfDoneOperation()));
 
 
       }
