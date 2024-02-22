@@ -17,15 +17,17 @@ import static lombok.AccessLevel.PRIVATE;
 @FieldDefaults(level = PRIVATE)
 public class SpecialistResponseDTO {
 
-    Long specialistId;
-    String firstname;
-    String lastname;
-    String email;
-    Boolean isActive;
-    SpecialistStatus specialistStatus;
-    double score;
-    Long credit;
-    @JsonFormat(pattern = "yyyy-MM-dd' 'HH:mm:ss")
-    LocalDateTime registrationTime;
+      Long specialistId;
+      String firstname;
+      String lastname;
+      String email;
+      Boolean isActive;
+      SpecialistStatus specialistStatus;
+      double score;
+      Long credit;
+      int numberOfOperation;
+      int numberOfDoneOperation;
+      @JsonFormat(pattern = "yyyy-MM-dd' 'HH:mm:ss")
+      LocalDateTime registrationTime;
 
 }
