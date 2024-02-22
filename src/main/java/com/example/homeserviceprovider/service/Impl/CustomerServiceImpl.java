@@ -183,6 +183,7 @@ public class CustomerServiceImpl extends BaseEntityServiceImpl<Customer, Long, C
             Order order = orderMapper.convertToNewOrder(soDTO, dbClient, subServices.get());
             if (dbClient.getCustomerStatus().equals(HAS_NOT_ORDER_YET))
                   dbClient.setCustomerStatus(HAS_ORDERS);
+            dbClient.setNumberOfOperation(dbClient.getNumberOfOperation() + 1);
             orderService.save(order);
             return new ProjectResponse("200", "THE ORDER HAS BEEN ADDED SUCCESSFULLY");
       }
@@ -232,6 +233,7 @@ public class CustomerServiceImpl extends BaseEntityServiceImpl<Customer, Long, C
             if (order.isEmpty())
                   throw new OrderIsNotExistException("ont found order");
             accounting(order.get());
+            customer.get().setPaidCounter(customer.get().getPaidCounter() + 1);
             repository.save(customer.get());
             return new ProjectResponse("200", "payment was successfully");
       }
@@ -244,6 +246,7 @@ public class CustomerServiceImpl extends BaseEntityServiceImpl<Customer, Long, C
             if (customerOptional.isEmpty())
                   throw new CustomerNotExistException("not found user");
             customerOptional.get().setCredit(customerOptional.get().getCredit() + dto.getPrice());
+            customerOptional.get().setNumberOfOperation(customerOptional.get().getNumberOfOperation() + 1);
             repository.save(customerOptional.get());
             return new ProjectResponse("200", "your account credit has been successfully " +
                                               "increased by $" + dto.getPrice() + ".");
@@ -261,6 +264,7 @@ public class CustomerServiceImpl extends BaseEntityServiceImpl<Customer, Long, C
                   throw new AmountLessExseption("not enough credit to pay in app");
             ((Customer) customer).setCredit(credit - offerPrice);
             accounting(order.get());
+            dbClient.get().setPaidCounter(dbClient.get().getPaidCounter() + 1);
             repository.save(dbClient.get());
             return new ProjectResponse("200", "payment was successful");
       }
@@ -274,6 +278,7 @@ public class CustomerServiceImpl extends BaseEntityServiceImpl<Customer, Long, C
             Specialist specialist = offer.getSpecialist();
             long managerShare = Math.round(offerPrice * 0.3);
             specialist.setCredit(specialist.getCredit() + offerPrice - managerShare);
+            specialist.setPaidCounter(specialist.getPaidCounter() + 1);
             specialistService.save(specialist);
       }
 
@@ -318,13 +323,13 @@ public class CustomerServiceImpl extends BaseEntityServiceImpl<Customer, Long, C
       @Override
       public ProjectResponse addAddress(AddressDTO addressDTO, Long clientId) {
             validation.checkAddress(addressDTO);
-            Optional<Customer> client = repository.findById(clientId);
+            Optional<Customer> customer = repository.findById(clientId);
             Address address = addressMapper.convertToAddress(addressDTO);
-            address.setCustomer(client.get());
-            client.get().getAddressList().add(address);
-            if (client.get().getCustomerStatus().equals(NEW))
-                  client.get().setCustomerStatus(HAS_NOT_ORDER_YET);
-            repository.save(client.get());
+            address.setCustomer(customer.get());
+            customer.get().getAddressList().add(address);
+            if (customer.get().getCustomerStatus().equals(NEW))
+                  customer.get().setCustomerStatus(HAS_NOT_ORDER_YET);
+            repository.save(customer.get());
             return new ProjectResponse("200", "ADDED NEW ADDRESS SUCCESSFULLY");
       }
 
@@ -450,6 +455,7 @@ public class CustomerServiceImpl extends BaseEntityServiceImpl<Customer, Long, C
                          ("the status of this order is not yet \"DONE\"!");
             Specialist specialist = order.get().getOfferList().stream().filter(o ->
                    o.getOfferStatus().equals(ACCEPTED)).findFirst().get().getSpecialist();
+            specialist.setScore(dto.getScore());
             Comment comment = commentMapper.convertToComment(dto);
             comment.setOrder(order.get());
             commentService.save(comment);
@@ -521,10 +527,17 @@ public class CustomerServiceImpl extends BaseEntityServiceImpl<Customer, Long, C
                   dto.setMinNumberOfOperation(0);
             if (dto.getMinNumberOfOperation() != null && dto.getMaxNumberOfOperation() == null)
                   dto.setMaxNumberOfOperation(Integer.MAX_VALUE);
+            if (dto.getMinNumberOfOperation() != null && dto.getMaxNumberOfOperation() != null)
+                  predicateList.add(criteriaBuilder.between(customerRoot.get("numberOfOperation"),
+                         dto.getMinNumberOfOperation(), dto.getMaxNumberOfOperation()));
+
             if (dto.getMinNumberOfDoneOperation() == null && dto.getMaxNumberOfDoneOperation() != null)
                   dto.setMinNumberOfDoneOperation(0);
             if (dto.getMinNumberOfDoneOperation() != null && dto.getMaxNumberOfDoneOperation() == null)
                   dto.setMaxNumberOfDoneOperation(Integer.MAX_VALUE);
+            if (dto.getMinNumberOfDoneOperation() != null && dto.getMaxNumberOfDoneOperation() != null)
+                  predicateList.add(criteriaBuilder.between(customerRoot.get("paidCounter"),
+                         dto.getMinNumberOfDoneOperation(), dto.getMaxNumberOfDoneOperation()));
 
 
       }
