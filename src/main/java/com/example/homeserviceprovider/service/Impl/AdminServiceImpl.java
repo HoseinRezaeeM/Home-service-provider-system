@@ -46,7 +46,7 @@ public class AdminServiceImpl extends BaseEntityServiceImpl<Admin, Long, AdminRe
       private final SubServicesMapper subServicesMapper;
       private final SpecialistMapper specialistMapper;
       private final AdminMapper adminMapper;
-      private final FilterMapper filterMapper;
+
 
       private final Validation validation;
       private final TokenService tokenService;
@@ -56,7 +56,7 @@ public class AdminServiceImpl extends BaseEntityServiceImpl<Admin, Long, AdminRe
                               SubServicesService subServicesService, OrderService orderService, SpecialistService specialistService,
                               CustomerService customerService, MainServiceMapper mainServiceMapper,
                               SubServicesMapper subServicesMapper, SpecialistMapper specialistMapper,
-                              AdminMapper adminMapper, FilterMapper filterMapper, Validation validation,
+                              AdminMapper adminMapper, Validation validation,
                               TokenService tokenService, EmailService emailService) {
             super(repository);
             this.mainServiceService = mainServiceService;
@@ -68,7 +68,6 @@ public class AdminServiceImpl extends BaseEntityServiceImpl<Admin, Long, AdminRe
             this.subServicesMapper = subServicesMapper;
             this.specialistMapper = specialistMapper;
             this.adminMapper = adminMapper;
-            this.filterMapper = filterMapper;
             this.validation = validation;
             this.tokenService = tokenService;
             this.emailService = emailService;
