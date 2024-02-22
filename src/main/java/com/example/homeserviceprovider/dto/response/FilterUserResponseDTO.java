@@ -16,19 +16,20 @@ import static lombok.AccessLevel.PRIVATE;
 @FieldDefaults(level = PRIVATE)
 public class FilterUserResponseDTO {
 
-    @JsonFormat(pattern = "yyyy-MM-dd' 'HH:mm:ss")
-    LocalDateTime userCreationDate;
-    String userType;
-    String userStatus;
-    Boolean isActive;
-    Long userId;
-    String firstname;
-    String lastname;
-    String email;
-    String username;
-    Long credit;
-    double score_JustForSpecialist;
-
+      @JsonFormat(pattern = "yyyy-MM-dd' 'HH:mm:ss")
+      LocalDateTime userCreationDate;
+      String userType;
+      String userStatus;
+      Boolean isActive;
+      Long userId;
+      String firstname;
+      String lastname;
+      String email;
+      String username;
+      Long credit;
+      double score_JustForSpecialist;
+      int numberOfOperation;
+      int numberOfDoneOperation;
 
 
 }
