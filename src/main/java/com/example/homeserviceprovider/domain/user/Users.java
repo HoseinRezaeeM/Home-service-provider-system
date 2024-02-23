@@ -3,10 +3,7 @@ package com.example.homeserviceprovider.domain.user;
 import com.example.homeserviceprovider.base.domain.BaseEntity;
 import com.example.homeserviceprovider.domain.user.enums.Role;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
+import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.springframework.security.core.GrantedAuthority;
@@ -23,6 +20,7 @@ import java.util.Collections;
 @NoArgsConstructor
 @ToString
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@Inheritance(strategy = InheritanceType.JOINED)
 public class Users extends BaseEntity<Long> implements UserDetails {
 
       String firstname;
