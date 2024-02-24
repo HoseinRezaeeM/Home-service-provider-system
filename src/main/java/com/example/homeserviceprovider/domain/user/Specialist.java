@@ -15,6 +15,7 @@ import java.util.List;
 @Entity
 @Getter
 @Setter
+@ToString
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
@@ -29,6 +30,7 @@ public class Specialist extends Users {
       @ManyToMany(mappedBy = "specialistList", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
       List<SubServices> subServicesList;
       @OneToMany(mappedBy = "specialist")
+      @ToString.Exclude
       List<Offer> offerList;
       String province;
       int paidCounter;
