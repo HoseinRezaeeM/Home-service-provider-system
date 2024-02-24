@@ -36,7 +36,6 @@ public class SecurityConfig {
                                 .requestMatchers("/customer/**").hasAuthority(CUSTOMER.name())
                                 .requestMatchers("/specialist/**").hasAuthority(SPECIALIST.name())
                                 .anyRequest().authenticated()
-
                 )
                 .authenticationProvider(new CustomAuthProvider(
                         (CustomerUserDetailsService) userDetailsService(), passwordEncoder()))
