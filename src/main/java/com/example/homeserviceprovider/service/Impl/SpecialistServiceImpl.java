@@ -96,7 +96,7 @@ public class SpecialistServiceImpl extends BaseEntityServiceImpl<Specialist, Lon
             validation.checkPassword(specialistRegistrationDTO.getPassword());
             validation.checkText(specialistRegistrationDTO.getFirstname());
             validation.checkText(specialistRegistrationDTO.getLastname());
-            validation.checkImage(specialistRegistrationDTO.getFile());
+            //validation.checkImage(specialistRegistrationDTO.getFile());
             Specialist specialist = specialistMapper.convertToNewSpecialist(specialistRegistrationDTO);
             repository.save(specialist);
             SaveImageToFile.saveImageToFile(specialist.getImage(),
