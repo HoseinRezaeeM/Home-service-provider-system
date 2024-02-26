@@ -24,9 +24,9 @@ public class FilterOrderDTO {
     Long minProposedPrice;
     Long maxProposedPrice;
 
-    @JsonFormat(pattern = "yyyy-MM-dd' 'HH:mm:ss")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     LocalDateTime minOrderRegistrationDate;
-    @JsonFormat(pattern = "yyyy-MM-dd' 'HH:mm:ss")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     LocalDateTime maxOrderRegistrationDate;
 
 }

@@ -16,7 +16,7 @@ import static lombok.AccessLevel.PRIVATE;
 @FieldDefaults(level = PRIVATE)
 public class FilterUserResponseDTO {
 
-      @JsonFormat(pattern = "yyyy-MM-dd' 'HH:mm:ss")
+      @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
       LocalDateTime userCreationDate;
       String userType;
       String userStatus;

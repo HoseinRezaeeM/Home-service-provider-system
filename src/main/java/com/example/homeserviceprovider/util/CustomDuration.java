@@ -3,6 +3,9 @@ package com.example.homeserviceprovider.util;
 
 import com.example.homeserviceprovider.domain.offer.Offer;
 import com.example.homeserviceprovider.domain.order.Order;
+import jakarta.persistence.EntityManagerFactory;
+import org.springframework.context.annotation.Bean;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -38,4 +41,6 @@ public class CustomDuration {
         }
         return stringBuilder.toString();
     }
+
+
 }

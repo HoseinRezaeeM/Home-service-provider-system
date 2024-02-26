@@ -16,7 +16,6 @@ import java.time.LocalDateTime;
 @MappedSuperclass
 @AllArgsConstructor
 @NoArgsConstructor
-@Inheritance(strategy = InheritanceType.TABLE_PER_CLASS)
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public  class BaseEntity<ID extends Serializable> {
       @Id @GeneratedValue(strategy = GenerationType.AUTO)

@@ -136,10 +136,10 @@ public class CustomerController {
 
     @Transactional
     @GetMapping("/increase-account-balance/{price}")
-    public ModelAndView increaseAccountBalance(
-            @PathVariable Long price, Model model, Authentication authentication) {
-        return customerServices.increaseAccountBalance(
-                price, ((Users) authentication.getPrincipal()).getId(), model);
+    public ResponseEntity<ProjectResponse> increaseAccountBalance(
+            @PathVariable Long price, Authentication authentication) {
+        return ResponseEntity.ok(customerServices.increaseCustomerCredit(
+                ((Users) authentication.getPrincipal()).getId(),price));
     }
 
     @PostMapping("/send-payment-info")
@@ -149,12 +149,6 @@ public class CustomerController {
         return ResponseEntity.ok().body(customerServices.changeOrderStatusToPaidByOnlinePayment(
                 dto.getCustomerIdOrderIdDTO()));
     }
-    @PostMapping("/send-increase-balance-info")
-    public ResponseEntity<ProjectResponse> increaseBalanceInfo(
-            @ModelAttribute @Validated BalanceRequestDTO dto) {
-        validation.checkBalanceRequest(dto);
-        return ResponseEntity.ok().body(customerServices.increaseCustomerCredit(
-                dto.getCustomerIdPriceDTO()));
-    }
+
 
 }

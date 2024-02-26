@@ -11,6 +11,7 @@ import com.example.homeserviceprovider.dto.response.LimitedOrderResponseDTO;
 import com.example.homeserviceprovider.dto.response.OrderResponseDTO;
 import com.example.homeserviceprovider.util.CustomDuration;
 import lombok.RequiredArgsConstructor;
+import lombok.ToString;
 import org.springframework.stereotype.Component;
 
 import static com.example.homeserviceprovider.domain.offer.enums.OfferStatus.ACCEPTED;
@@ -19,6 +20,7 @@ import static com.example.homeserviceprovider.domain.order.enums.OrderStatus.WAI
 
 
 @Component
+@ToString
 @RequiredArgsConstructor
 public class OrderMapper {
 

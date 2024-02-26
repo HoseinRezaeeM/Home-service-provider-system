@@ -18,7 +18,7 @@
             <h3>Payment Details</h3>
         </header>
 
-        <form method="post" id="myForm" th:action="@{/customer/send-payment-info}" th:object="${dto}">
+        <form method="post" id="balance" th:action="@{/customer/send-payment-info}" th:object="${dto}">
             <div>
                 must be paid : <span th:text="${dto.price}">$ </span>
             </div>
@@ -85,8 +85,7 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-
-        const form = document.getElementById('myForm');
+        const form = document.getElementById('balance');
         form.addEventListener('submit', (event) => {
             event.preventDefault();
 

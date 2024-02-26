@@ -38,10 +38,7 @@ import java.io.IOException;
 
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 
 @Service
@@ -269,25 +266,12 @@ public class SpecialistServiceImpl extends BaseEntityServiceImpl<Specialist, Lon
       }
 
       @Override
-      @Transactional(readOnly = true)
-      public List<FilterUserResponseDTO> specialistFilter(FilterUserDTO specialistDTO) {
+      @Transactional
+      public List<FilterUserResponseDTO> specialistFilter(FilterUserDTO specialistDto) {
             List<Predicate> predicateList = new ArrayList<>();
             CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
             CriteriaQuery<Specialist> specialistCriteriaQuery = criteriaBuilder.createQuery(Specialist.class);
             Root<Specialist> specialistRoot = specialistCriteriaQuery.from(Specialist.class);
-            createFilters(specialistDTO, predicateList, criteriaBuilder, specialistRoot);
-            Predicate[] predicates = new Predicate[predicateList.size()];
-            predicateList.toArray(predicates);
-            specialistCriteriaQuery.select(specialistRoot).where(predicates);
-            List<Specialist> resultList = entityManager.createQuery(specialistCriteriaQuery).getResultList();
-            List<FilterUserResponseDTO> fuDTOS = new ArrayList<>();
-            resultList.forEach(rl -> fuDTOS.add(specialistMapper.convertToFilterDTO(rl)));
-            return fuDTOS;
-      }
-
-      private void createFilters(FilterUserDTO specialistDto, List<Predicate> predicateList,
-                                 CriteriaBuilder criteriaBuilder, Root<Specialist> specialistRoot) {
-
             if (specialistDto.getFirstname() != null) {
                   String firstname = "%" + specialistDto.getFirstname() + "%";
                   predicateList.add(criteriaBuilder.like(specialistRoot.get("firstname"), firstname));
@@ -350,9 +334,11 @@ public class SpecialistServiceImpl extends BaseEntityServiceImpl<Specialist, Lon
                   predicateList.add(criteriaBuilder.between(specialistRoot.get("rateCounter"),
                          specialistDto.getMinNumberOfDoneOperation(), specialistDto.getMaxNumberOfDoneOperation()));
 
-
+            specialistCriteriaQuery.select(specialistRoot).where(criteriaBuilder.or(predicateList.toArray(new Predicate[0])));
+            List<Specialist> resultList = entityManager.createQuery(specialistCriteriaQuery).getResultList();
+            List<FilterUserResponseDTO> fuDTOS = new ArrayList<>();
+            resultList.forEach(rl -> fuDTOS.add(specialistMapper.convertToFilterDTO(rl)));
+            return fuDTOS;
       }
-
-
 
 }

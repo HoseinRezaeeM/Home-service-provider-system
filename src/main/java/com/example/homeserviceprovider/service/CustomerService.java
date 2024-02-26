@@ -57,13 +57,13 @@ public interface CustomerService extends BaseUsersService<Customer> {
 
       ProjectResponse changeOrderStatusToPaidByOnlinePayment(CustomerIdOrderIdDTO customerIdOrderIdDTO);
 
-      ProjectResponse increaseCustomerCredit(CustomerIdPriceDTO customerIdPriceDTO);
+      ProjectResponse increaseCustomerCredit(Long id,Long price);
 
       ProjectResponse paidByInAppCredit(Long orderId, Users customer);
 
       ModelAndView payByOnlinePayment(Long orderId, Users users, Model model);
 
-      ModelAndView increaseAccountBalance(Long price, Long customerId, Model model);
+      ProjectResponse increaseAccountBalance(Long price, Long customerId);
 
       ProjectResponse addAddress(AddressDTO addressDTO, Long customerId);
 

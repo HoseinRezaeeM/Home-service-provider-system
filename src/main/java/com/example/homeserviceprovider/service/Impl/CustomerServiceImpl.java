@@ -9,7 +9,6 @@ import com.example.homeserviceprovider.domain.offer.Offer;
 import com.example.homeserviceprovider.domain.order.Order;
 import com.example.homeserviceprovider.domain.order.enums.OrderStatus;
 import com.example.homeserviceprovider.domain.service.SubServices;
-import com.example.homeserviceprovider.domain.user.Admin;
 import com.example.homeserviceprovider.domain.user.Customer;
 import com.example.homeserviceprovider.domain.user.Specialist;
 import com.example.homeserviceprovider.domain.user.Users;
@@ -39,10 +38,7 @@ import org.springframework.web.servlet.ModelAndView;
 
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 import static com.example.homeserviceprovider.domain.offer.enums.OfferStatus.ACCEPTED;
 import static com.example.homeserviceprovider.domain.offer.enums.OfferStatus.REJECTED;
@@ -239,33 +235,36 @@ public class CustomerServiceImpl extends BaseEntityServiceImpl<Customer, Long, C
       }
 
       @Override
-      public ProjectResponse increaseCustomerCredit(CustomerIdPriceDTO dto) {
-            validation.checkPositiveNumber(dto.getCustomerId());
-            validation.checkPositiveNumber(dto.getPrice());
-            Optional<Customer> customerOptional = repository.findById(dto.getCustomerId());
+      public ProjectResponse increaseCustomerCredit(Long id, Long price) {
+            validation.checkPositiveNumber(id);
+            validation.checkPositiveNumber(price);
+            Optional<Customer> customerOptional = repository.findById(id);
             if (customerOptional.isEmpty())
                   throw new CustomerNotExistException("not found user");
-            customerOptional.get().setCredit(customerOptional.get().getCredit() + dto.getPrice());
+            customerOptional.get().setCredit(customerOptional.get().getCredit() + price);
             customerOptional.get().setNumberOfOperation(customerOptional.get().getNumberOfOperation() + 1);
             repository.save(customerOptional.get());
             return new ProjectResponse("200", "your account credit has been successfully " +
-                                              "increased by $" + dto.getPrice() + ".");
+                                              "increased by $" + price + ".");
       }
 
       @Override
       public ProjectResponse paidByInAppCredit(Long orderId, Users customer) {
             validation.checkPositiveNumber(orderId);
             validation.checkOwnerOfTheOrder(orderId, (Customer) customer);
-            Optional<Customer> dbClient = repository.findById(customer.getId());
+            Optional<Customer> optionalCustomer = repository.findById(customer.getId());
             Optional<Order> order = orderService.findById(orderId);
-            Long credit = dbClient.get().getCredit();
-            Long offerPrice = paymentPriceCalculator(orderId);
-            if (credit < offerPrice)
+            Long credit = optionalCustomer.get().getCredit();
+            Offer offer = order.get().getOfferList().stream().
+                   filter(o -> o.getOfferStatus().equals(ACCEPTED)).findFirst().get();
+            Long offerPrice = offer.getProposedPrice();
+            if (credit < offerPrice) {
                   throw new AmountLessExseption("not enough credit to pay in app");
-            ((Customer) customer).setCredit(credit - offerPrice);
+            }
             accounting(order.get());
-            dbClient.get().setPaidCounter(dbClient.get().getPaidCounter() + 1);
-            repository.save(dbClient.get());
+            optionalCustomer.get().setCredit(credit - offerPrice);
+            optionalCustomer.get().setPaidCounter(optionalCustomer.get().getPaidCounter() + 1);
+            repository.save(optionalCustomer.get());
             return new ProjectResponse("200", "payment was successful");
       }
 
@@ -283,14 +282,12 @@ public class CustomerServiceImpl extends BaseEntityServiceImpl<Customer, Long, C
       }
 
       @Override
-      public ModelAndView increaseAccountBalance(Long price, Long customerId, Model model) {
+      public ProjectResponse increaseAccountBalance(Long price, Long customerId) {
             validation.checkPositiveNumber(price);
             BalancePageDTO balancePageDTO = new BalancePageDTO();
             balancePageDTO.setCustomerId(customerId);
             balancePageDTO.setPrice(price);
-            setupCaptcha(balancePageDTO);
-            model.addAttribute("bdto", balancePageDTO);
-            return new ModelAndView("incBalance");
+            return new ProjectResponse("200", " SUCCESSFULLY");
       }
 
       @Override
@@ -313,12 +310,6 @@ public class CustomerServiceImpl extends BaseEntityServiceImpl<Customer, Long, C
             dto.setImage(CaptchaUtil.encodeBase64(captcha));
       }
 
-      private void setupCaptcha(BalancePageDTO dto) {
-            Captcha captcha = CaptchaUtil.createCaptcha(350, 100);
-            dto.setHidden(captcha.getAnswer());
-            dto.setCaptcha("");
-            dto.setImage(CaptchaUtil.encodeBase64(captcha));
-      }
 
       @Override
       public ProjectResponse addAddress(AddressDTO addressDTO, Long clientId) {
@@ -345,9 +336,9 @@ public class CustomerServiceImpl extends BaseEntityServiceImpl<Customer, Long, C
                                "This order has not yet reached the payment stage, this order is in the " +
                                orderStatus + " stage!");
             }
-            Optional<Offer> offer = order.get().getOfferList().stream().
-                   filter(o -> o.getOfferStatus().equals(ACCEPTED)).findFirst();
-            return offer.get().getProposedPrice();
+            Offer offer = order.get().getOfferList().stream().
+                   filter(o -> o.getOfferStatus().equals(ACCEPTED)).findFirst().get();
+            return offer.getProposedPrice();
       }
 
       @Override
@@ -466,79 +457,80 @@ public class CustomerServiceImpl extends BaseEntityServiceImpl<Customer, Long, C
       }
 
       @Override
-      public List<FilterUserResponseDTO> customerFilter(FilterUserDTO clientDTO) {
+      @Transactional
+      public List<FilterUserResponseDTO> customerFilter(FilterUserDTO customerDTO) {
 
-            List<FilterUserResponseDTO> fcDTOS = new ArrayList<>();
-            List<Predicate> predicateList = new ArrayList<>();
+            List<FilterUserResponseDTO> filterUserResponseDTOS = new ArrayList<>();
             CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-            CriteriaQuery<Customer> clientCriteriaQuery = criteriaBuilder.createQuery(Customer.class);
-            Root<Customer> clientRoot = clientCriteriaQuery.from(Customer.class);
-
-            createFilters(clientDTO, predicateList, criteriaBuilder, clientRoot);
-            Predicate[] predicates = new Predicate[predicateList.size()];
-           // predicateList.toArray(predicates);
-            clientCriteriaQuery.select(clientRoot).where(predicateList.toArray(predicates));
-            List<Customer> resultList = entityManager.createQuery(clientCriteriaQuery).getResultList();
-            if (resultList.isEmpty())
-                  return fcDTOS;
-            resultList.forEach(rl -> fcDTOS.add(customerMapper.convertToFilterDTO(rl)));
-            return fcDTOS;
-      }
-
-      private void createFilters(FilterUserDTO dto, List<Predicate> predicateList,
-                                 CriteriaBuilder criteriaBuilder, Root<Customer> customerRoot) {
-            if (dto.getFirstname() != null) {
-                  String firstname = "%" + dto.getFirstname() + "%";
-                  predicateList.add(criteriaBuilder.like(customerRoot.get("firstname"), firstname));
+            CriteriaQuery<Customer> customerCriteriaQuery = criteriaBuilder.createQuery(Customer.class);
+            Root<Customer> customerRoot = customerCriteriaQuery.from(Customer.class);
+            List<Predicate> predicateList = new ArrayList<>();
+            if (customerDTO.getFirstname() != null) {
+                  String firstname = customerDTO.getFirstname();
+                  predicateList.add(criteriaBuilder.equal(customerRoot.get("firstname"), firstname));
             }
-            if (dto.getLastname() != null) {
-                  String lastname = "%" + dto.getLastname() + "%";
-                  predicateList.add(criteriaBuilder.like(customerRoot.get("lastname"), lastname));
+            if (customerDTO.getLastname() != null) {
+                  String lastname = customerDTO.getLastname();
+                  predicateList.add(criteriaBuilder.equal(customerRoot.get("lastname"), lastname));
             }
-            if (dto.getUsername() != null) {
-                  String email = "%" + dto.getUsername() + "%";
+            if (customerDTO.getUsername() != null) {
+                  String email = customerDTO.getUsername();
                   predicateList.add(criteriaBuilder.like(customerRoot.get("email"), email));
             }
-            if (dto.getIsActive() != null)
-                  if (dto.getIsActive())
+            if (customerDTO.getIsActive() != null) {
+                  if (customerDTO.getIsActive())
                         predicateList.add(criteriaBuilder.isTrue(customerRoot.get("isActive")));
                   else
                         predicateList.add(criteriaBuilder.isFalse(customerRoot.get("isActive")));
-
-            if (dto.getUserStatus() != null)
+            }
+            if (customerDTO.getUserStatus() != null) {
                   predicateList.add(criteriaBuilder.equal(customerRoot.get("customerStatus"),
-                         dto.getUserStatus()));
-
-            if (dto.getMinCredit() == null && dto.getMaxCredit() != null)
-                  dto.setMinCredit(0L);
-            if (dto.getMinCredit() != null && dto.getMaxCredit() == null)
-                  dto.setMaxCredit(Long.MAX_VALUE);
-            if (dto.getMinCredit() != null && dto.getMaxCredit() != null)
+                         customerDTO.getUserStatus()));
+            }
+            if (customerDTO.getMinCredit() == 0 && customerDTO.getMaxCredit() != 0) {
+                  customerDTO.setMinCredit(0L);
+            }
+            if (customerDTO.getMinCredit() != 0 && customerDTO.getMaxCredit() == 0) {
+                  customerDTO.setMaxCredit(Long.MAX_VALUE);
+            }
+            if (customerDTO.getMinCredit() != 0 && customerDTO.getMaxCredit() != 0) {
                   predicateList.add(criteriaBuilder.between(customerRoot.get("credit"),
-                         dto.getMinCredit(), dto.getMaxCredit()));
-            if (dto.getMinUserCreationAt() == null && dto.getMaxUserCreationAt() != null)
-                  dto.setMinUserCreationAt(LocalDateTime.now().minusYears(2));
-            if (dto.getMinUserCreationAt() != null && dto.getMaxUserCreationAt() == null)
-                  dto.setMaxUserCreationAt(LocalDateTime.now());
-            if (dto.getMinUserCreationAt() != null && dto.getMaxUserCreationAt() != null)
+                         customerDTO.getMinCredit(), customerDTO.getMaxCredit()));
+            }
+            if (customerDTO.getMinUserCreationAt() == null && customerDTO.getMaxUserCreationAt() != null) {
+                  customerDTO.setMinUserCreationAt(LocalDateTime.now().minusYears(2));
+            }
+            if (customerDTO.getMinUserCreationAt() != null && customerDTO.getMaxUserCreationAt() == null) {
+                  customerDTO.setMaxUserCreationAt(LocalDateTime.now());
+            }
+            if (customerDTO.getMinUserCreationAt() != null && customerDTO.getMaxUserCreationAt() != null) {
                   predicateList.add(criteriaBuilder.between(customerRoot.get("registrationTime"),
-                         dto.getMinUserCreationAt(), dto.getMaxUserCreationAt()));
-            if (dto.getMinNumberOfOperation() == null && dto.getMaxNumberOfOperation() != null)
-                  dto.setMinNumberOfOperation(0);
-            if (dto.getMinNumberOfOperation() != null && dto.getMaxNumberOfOperation() == null)
-                  dto.setMaxNumberOfOperation(Integer.MAX_VALUE);
-            if (dto.getMinNumberOfOperation() != null && dto.getMaxNumberOfOperation() != null)
+                         customerDTO.getMinUserCreationAt(), customerDTO.getMaxUserCreationAt()));
+            }
+            if (customerDTO.getMinNumberOfOperation() == 0 && customerDTO.getMaxNumberOfOperation() != 0) {
+                  customerDTO.setMinNumberOfOperation(0);
+            }
+            if (customerDTO.getMinNumberOfOperation() != 0 && customerDTO.getMaxNumberOfOperation() == 0) {
+                  customerDTO.setMaxNumberOfOperation(Integer.MAX_VALUE);
+            }
+            if (customerDTO.getMinNumberOfOperation() != 0 && customerDTO.getMaxNumberOfOperation() != 0) {
                   predicateList.add(criteriaBuilder.between(customerRoot.get("numberOfOperation"),
-                         dto.getMinNumberOfOperation(), dto.getMaxNumberOfOperation()));
-
-            if (dto.getMinNumberOfDoneOperation() == null && dto.getMaxNumberOfDoneOperation() != null)
-                  dto.setMinNumberOfDoneOperation(0);
-            if (dto.getMinNumberOfDoneOperation() != null && dto.getMaxNumberOfDoneOperation() == null)
-                  dto.setMaxNumberOfDoneOperation(Integer.MAX_VALUE);
-            if (dto.getMinNumberOfDoneOperation() != null && dto.getMaxNumberOfDoneOperation() != null)
+                         customerDTO.getMinNumberOfOperation(), customerDTO.getMaxNumberOfOperation()));
+            }
+            if (customerDTO.getMinNumberOfDoneOperation() == 0 && customerDTO.getMaxNumberOfDoneOperation() != 0) {
+                  customerDTO.setMinNumberOfDoneOperation(0);
+            }
+            if (customerDTO.getMinNumberOfDoneOperation() != 0 && customerDTO.getMaxNumberOfDoneOperation() == 0) {
+                  customerDTO.setMaxNumberOfDoneOperation(Integer.MAX_VALUE);
+            }
+            if (customerDTO.getMinNumberOfDoneOperation() != 0 && customerDTO.getMaxNumberOfDoneOperation() != 0) {
                   predicateList.add(criteriaBuilder.between(customerRoot.get("paidCounter"),
-                         dto.getMinNumberOfDoneOperation(), dto.getMaxNumberOfDoneOperation()));
-
-
+                         customerDTO.getMinNumberOfDoneOperation(), customerDTO.getMaxNumberOfDoneOperation()));
+            }
+            customerCriteriaQuery.select(customerRoot).where(criteriaBuilder.or(predicateList.toArray(new Predicate[0])));
+            List<Customer> resultList = entityManager.createQuery(customerCriteriaQuery).getResultList();
+            resultList.forEach(customer -> filterUserResponseDTOS.add(customerMapper.convertToFilterDTO(customer)));
+            return filterUserResponseDTOS;
       }
+
 }

@@ -122,7 +122,7 @@ public class AdminServiceImpl extends BaseEntityServiceImpl<Admin, Long, AdminRe
             if (mainService.isEmpty())
                   throw new MainServicesIsNotExistException("this main service dose not exist!");
             if (subServicesService.findByName(subServicesName).isPresent())
-                  throw new SubServicesIsExistException("this job already exist!");
+                  throw new SubServicesIsExistException("this subService already exist!");
             SubServices newSubServices = subServicesMapper.convertToSubService(subServicesRequestDTO);
             newSubServices.setMainServices(mainService.get());
             subServicesService.save(newSubServices);
@@ -133,7 +133,7 @@ public class AdminServiceImpl extends BaseEntityServiceImpl<Admin, Long, AdminRe
       public ProjectResponse deleteSubServices(String name) {
             validation.checkText(name);
             if (subServicesService.findByName(name).isEmpty())
-                  throw new SubServicesIsNotExistException("this job dose not exist!");
+                  throw new SubServicesIsNotExistException("this subService dose not exist!");
             subServicesService.deleteSubServicesByName(name);
             return new ProjectResponse("200", "DELETED SUCCESSFUL");
       }
@@ -142,16 +142,16 @@ public class AdminServiceImpl extends BaseEntityServiceImpl<Admin, Long, AdminRe
       public ProjectResponse addSpecialistToSubServices(Long subServicesId, Long specialistId) {
             validation.checkPositiveNumber(subServicesId);
             validation.checkPositiveNumber(specialistId);
-            Optional<SubServices> job = subServicesService.findById(subServicesId);
-            if (job.isEmpty())
-                  throw new SubServicesIsNotExistException("this job dose not exist!");
-            Optional<Specialist> specialist = specialistService.findById(specialistId);
-            if (specialist.isEmpty())
+            SubServices subServices = subServicesService.findById(subServicesId).get();
+            if (subServices.equals(null))
+                  throw new SubServicesIsNotExistException("this subServices dose not exist!");
+            Specialist specialist = specialistService.findById(specialistId).get();
+            if (specialist.equals(null))
                   throw new SpecialistIsNotExistException("this specialist does not exist!");
-            if (!(specialist.get().getStatus().equals(SpecialistStatus.CONFIRMED)))
+            if (!(specialist.getStatus().equals(SpecialistStatus.CONFIRMED)))
                   throw new SpecialistNoAccessException("the status of expert is not CONFIRMED");
-            specialist.get().addSubServices(job.get());
-            specialistService.save(specialist.get());
+            specialist.addSubServices(subServices);
+            specialistService.save(specialist);
             return new ProjectResponse("200", "ADDED SUCCESSFUL");
       }
 
@@ -191,30 +191,30 @@ public class AdminServiceImpl extends BaseEntityServiceImpl<Admin, Long, AdminRe
       @Override
       public ProjectResponse editSubServicesCustom(UpdateSubServicesDTO updateSubServicesDTO) {
             validation.checkText(updateSubServicesDTO.getName());
-            Optional<SubServices> job;
+            Optional<SubServices> subServices;
             if (updateSubServicesDTO.getSubServicesId() != null) {
                   validation.checkPositiveNumber(updateSubServicesDTO.getSubServicesId());
-                  job = subServicesService.findById(updateSubServicesDTO.getSubServicesId());
-                  if (job.isEmpty())
-                        throw new SubServicesIsNotExistException("this job dose not exist!");
-                  job.get().setName(updateSubServicesDTO.getName());
+                  subServices = subServicesService.findById(updateSubServicesDTO.getSubServicesId());
+                  if (subServices.isEmpty())
+                        throw new SubServicesIsNotExistException("this subServices dose not exist!");
+                  subServices.get().setName(updateSubServicesDTO.getName());
             } else {
-                  job = subServicesService.findByName(updateSubServicesDTO.getName());
-                  if (job.isEmpty())
-                        throw new SubServicesIsNotExistException("this job dose not exist!");
+                  subServices = subServicesService.findByName(updateSubServicesDTO.getName());
+                  if (subServices.isEmpty())
+                        throw new SubServicesIsNotExistException("this subServices dose not exist!");
             }
             if (updateSubServicesDTO.getDescription().isEmpty() &&
                 updateSubServicesDTO.getBasePrice() == 0L) {
                   throw new SubServicesIsNotExistException("change titles are empty!");
             } else if (!updateSubServicesDTO.getDescription().isEmpty()) {
                   validation.checkText(updateSubServicesDTO.getDescription());
-                  job.get().setDescription(updateSubServicesDTO.getDescription());
+                  subServices.get().setDescription(updateSubServicesDTO.getDescription());
             }
             if (updateSubServicesDTO.getBasePrice() != 0L) {
                   validation.checkPositiveNumber(updateSubServicesDTO.getBasePrice());
-                  job.get().setBasePrice(updateSubServicesDTO.getBasePrice());
+                  subServices.get().setBasePrice(updateSubServicesDTO.getBasePrice());
             }
-            subServicesService.save(job.get());
+            subServicesService.save(subServices.get());
             return new ProjectResponse("200", "UPDATED SUCCESSFUL");
 
       }
@@ -230,19 +230,18 @@ public class AdminServiceImpl extends BaseEntityServiceImpl<Admin, Long, AdminRe
       }
 
       @Override
+      @Transactional
       public ProjectResponse confirmSpecialist(Long specialistId) {
             validation.checkPositiveNumber(specialistId);
-            Optional<Specialist> specialist = specialistService.findById(specialistId);
-            if (specialist.isEmpty())
-                  throw new SpecialistIsNotExistException("this specialist does not exist!");
-            if (specialist.get().getIsActive()) {
-                  if (specialist.get().getStatus().equals(SpecialistStatus.CONFIRMED))
+            Specialist specialist = specialistService.findById(specialistId).get();
+            if (specialist.getIsActive()) {
+                  if (specialist.getStatus().equals(SpecialistStatus.CONFIRMED))
                         throw new SpecialistIsHoldsExistException("this specialist is currently certified!");
-                  specialist.get().setStatus(SpecialistStatus.CONFIRMED);
+                  specialist.setStatus(SpecialistStatus.CONFIRMED);
             } else {
-                  specialist.get().setIsActive(true);
+                  specialist.setIsActive(true);
             }
-            specialistService.save(specialist.get());
+            specialistService.save(specialist);
             return new ProjectResponse("200", "UPDATED SUCCESSFUL");
       }
 
@@ -270,10 +269,12 @@ public class AdminServiceImpl extends BaseEntityServiceImpl<Admin, Long, AdminRe
       }
 
       @Override
+      @Transactional
       public List<FilterUserResponseDTO> userFilter(FilterUserDTO userDTO) {
             List<FilterUserResponseDTO> filterUserResponseDTOList = new ArrayList<>();
             if (userDTO.getUserType().equals(CUSTOMER.name())) {
                   filterUserResponseDTOList.addAll(customerService.customerFilter(userDTO));
+
             }
             if (userDTO.getUserType().equals(SPECIALIST.name())) {
                   filterUserResponseDTOList.addAll(specialistService.specialistFilter(userDTO));

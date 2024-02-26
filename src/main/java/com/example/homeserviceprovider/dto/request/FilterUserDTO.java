@@ -1,15 +1,13 @@
 package com.example.homeserviceprovider.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.time.LocalDateTime;
 
 @Data
+@ToString
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
@@ -22,9 +20,9 @@ public class FilterUserDTO {
      Boolean isActive;
      String userStatus;
 
-     @JsonFormat(pattern = "yyyy-MM-dd' 'HH:mm:ss")
+     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
      LocalDateTime minUserCreationAt;
-     @JsonFormat(pattern = "yyyy-MM-dd' 'HH:mm:ss")
+     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
      LocalDateTime maxUserCreationAt;
 
      Integer minNumberOfOperation;
