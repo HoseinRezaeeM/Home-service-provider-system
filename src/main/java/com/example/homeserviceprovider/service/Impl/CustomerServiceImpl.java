@@ -475,7 +475,7 @@ public class CustomerServiceImpl extends BaseEntityServiceImpl<Customer, Long, C
             }
             if (customerDTO.getUsername() != null) {
                   String email = customerDTO.getUsername();
-                  predicateList.add(criteriaBuilder.like(customerRoot.get("email"), email));
+                  predicateList.add(criteriaBuilder.equal(customerRoot.get("email"), email));
             }
             if (customerDTO.getIsActive() != null) {
                   if (customerDTO.getIsActive())
