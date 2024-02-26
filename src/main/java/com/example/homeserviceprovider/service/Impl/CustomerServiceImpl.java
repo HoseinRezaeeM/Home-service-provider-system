@@ -476,8 +476,8 @@ public class CustomerServiceImpl extends BaseEntityServiceImpl<Customer, Long, C
 
             createFilters(clientDTO, predicateList, criteriaBuilder, clientRoot);
             Predicate[] predicates = new Predicate[predicateList.size()];
-            predicateList.toArray(predicates);
-            clientCriteriaQuery.select(clientRoot).where(predicates);
+           // predicateList.toArray(predicates);
+            clientCriteriaQuery.select(clientRoot).where(predicateList.toArray(predicates));
             List<Customer> resultList = entityManager.createQuery(clientCriteriaQuery).getResultList();
             if (resultList.isEmpty())
                   return fcDTOS;
