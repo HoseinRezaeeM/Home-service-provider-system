@@ -2,4 +2,4 @@
 <h1> Insomnia  </h1>
 <img src="https://github.com/HoseinRezaeeM/Home-service-provider-system/blob/master/27.02.2024_19.06.49_REC.png">
 
-<img src="https://github.com/HoseinRezaeeM/Home-service-provider-system/blob/master/Component%20%26%20Bean.png">
+
