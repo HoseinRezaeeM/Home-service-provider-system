@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public  class BaseEntity<ID extends Serializable> {
+public  class BaseEntity< ID extends Serializable> {
       @Id @GeneratedValue(strategy = GenerationType.AUTO)
       ID id;
       @JsonFormat(pattern = "yyyy-MM-dd")
